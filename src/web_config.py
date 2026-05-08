@@ -52,7 +52,12 @@ def get_default_config() -> dict:
             "enabled": False,
             "start":   "23:00",
             "end":     "07:00"
-        }
+        },
+        "cpu_monitor": {
+            "enabled":      False,
+            "show_sec":     10,
+            "interval_sec": 60,
+        },
     }
 
 
@@ -83,6 +88,12 @@ def save_config_route():
         config["night_mode"]["enabled"] = data.get("night_mode_enabled") == "on"
         config["night_mode"]["start"]   = data.get("night_mode_start", "23:00")
         config["night_mode"]["end"]     = data.get("night_mode_end",   "07:00")
+
+        if "cpu_monitor" not in config:
+            config["cpu_monitor"] = {}
+        config["cpu_monitor"]["enabled"]      = data.get("cpu_monitor_enabled") == "on"
+        config["cpu_monitor"]["show_sec"]     = int(data.get("cpu_monitor_show_sec",     10))
+        config["cpu_monitor"]["interval_sec"] = int(data.get("cpu_monitor_interval_sec", 60))
 
         save_config(config)
 

@@ -44,6 +44,11 @@ DEFAULT_CONFIG = {
         "start":   "23:00",
         "end":     "07:00"
     },
+    "cpu_monitor": {
+        "enabled":      False,
+        "show_sec":     10,
+        "interval_sec": 60,
+    },
 }
 
 

@@ -250,6 +250,49 @@
       </div>
     </div>
 
+    <!-- CPU 모니터 -->
+    <div class="card">
+      <h2>🖥 CPU 모니터</h2>
+      <div class="toggle-row">
+        <span>날씨 화면과 CPU 모니터 교대 표시</span>
+        <label class="toggle">
+          <input type="checkbox" name="cpu_monitor_enabled" id="cpu_monitor_enabled"
+            {{ 'checked' if config.cpu_monitor and config.cpu_monitor.enabled }}
+            onchange="toggleCpuOptions()">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div id="cpu_options" style="display:{{ 'block' if config.cpu_monitor and config.cpu_monitor.enabled else 'none' }}">
+        <div class="time-range" style="margin-top:12px">
+          <div class="field">
+            <label>CPU 표시 시간 (초)</label>
+            <select name="cpu_monitor_show_sec">
+              {% for s in [5, 10, 15, 20, 30] %}
+              <option value="{{ s }}"
+                {{ 'selected' if config.cpu_monitor and config.cpu_monitor.show_sec == s }}>
+                {{ s }}초
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>전환 주기 (초)</label>
+            <select name="cpu_monitor_interval_sec">
+              {% for s in [30, 60, 120, 180, 300] %}
+              <option value="{{ s }}"
+                {{ 'selected' if config.cpu_monitor and config.cpu_monitor.interval_sec == s }}>
+                {{ s }}초마다
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <p class="ip-hint" style="margin-top:6px">
+          예) 표시 10초 / 주기 60초 → 날씨 50초 → CPU 10초 → 반복
+        </p>
+      </div>
+    </div>
+
     <div class="btn-row">
       <button type="submit" class="btn btn-primary">💾 설정 저장</button>
     </div>
@@ -287,6 +330,12 @@
   // 저장 배너 자동 숨김
   const banner = document.querySelector(".banner.show");
   if (banner) setTimeout(() => banner.style.opacity = "0", 3000);
+
+  // CPU 모니터 옵션 토글
+  function toggleCpuOptions() {
+    const enabled = document.getElementById("cpu_monitor_enabled").checked;
+    document.getElementById("cpu_options").style.display = enabled ? "block" : "none";
+  }
 </script>
 </body>
 </html>
