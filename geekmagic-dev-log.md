@@ -212,25 +212,107 @@ def restore_theme():
 
 ---
 
+## 5-5. cpu_monitor.py + main.py 동시 실행 충돌 문제 ❌→✅
+
+### 문제 발견
+
+`cpu_monitor.py`를 단독 실행하는데도 여전히 이전 이미지가 깜박이는 현상이 지속됨.
+원인 조사 중 **`main.py`가 systemd 서비스로 백그라운드에서 함께 실행 중**임을 확인.
+
+```
+[main.py 스케줄러]    매 60초 → /set?theme=3 + weather_clock.jpg 덮어쓰기
+[cpu_monitor.py]     테마 복원 → /set?theme=1
+                          ↑ main.py가 60초 안에 다시 theme=3으로 강제 전환
+```
+
+두 프로세스가 서로의 테마 설정을 계속 덮어쓰는 레이스 컨디션.
+
+### 해결 방향 — 스케줄러 통합 (B안)
+
+`cpu_monitor.py`를 `main.py`의 스케줄러 안으로 흡수.
+**단일 프로세스**가 날씨 Push와 CPU Push를 조율.
+
+### 구현 설계
+
+```
+[scheduler thread]   날씨 이미지 60초마다 Push
+                       └─ _showing_cpu=True 이면 skip
+
+[cpu-monitor thread] 50초 대기 → CPU Push → 10초 대기 → 날씨 즉시 복원 → 반복
+                       └─ Push 전후 threading.Lock 획득
+```
+
+핵심 메커니즘:
+- `threading.Lock` — 날씨/CPU Push 동시 실행 방지
+- `_showing_cpu` 플래그 — CPU 표시 중 날씨 스케줄러의 Push를 자동 skip
+- CPU 표시 종료 후 `_update_display()` 즉시 호출 → 날씨 복원
+
+```python
+# src/scheduler.py 핵심 구조
+class WeatherClockScheduler:
+    def __init__(self, ...):
+        self._push_lock   = threading.Lock()
+        self._showing_cpu = False
+
+    def _update_display(self):
+        if self._showing_cpu:          # CPU 표시 중이면 skip
+            return
+        with self._push_lock:
+            ...날씨 이미지 Push...
+
+    def _cpu_monitor_loop(self):
+        while True:
+            sleep(rest_sec)            # 날씨 표시 기간 대기
+            self._showing_cpu = True
+            with self._push_lock:
+                ...CPU 이미지 Push...  # 날씨 Push와 충돌 없음
+            sleep(show_sec)
+            self._showing_cpu = False
+            self._update_display()     # 날씨 즉시 복원
+```
+
+### 추가된 파일 및 변경사항
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `src/cpu_image.py` (신규) | CPU 이미지 생성 로직을 독립 모듈로 분리 |
+| `src/scheduler.py` | cpu-monitor 스레드, Lock, `_showing_cpu` 플래그 추가 |
+| `config.json` | `cpu_monitor.enabled / show_sec / interval_sec` 섹션 추가 |
+| `src/web_config.py` | CPU 모니터 설정 저장/로드 처리 추가 |
+| `templates/index.html` | CPU 모니터 토글 + 시간 설정 카드 추가 |
+
+### 결과 ✅
+
+```
+로그 확인:
+  06:21:25  CPU 모니터 스레드 시작 — 표시 10초 / 주기 60초
+  06:22:16  날씨 화면 업데이트 ✅       ← 날씨 Push (50초 대기 후)
+  06:22:18  CPU 모니터 표시 (10초)      ← CPU Push (날씨와 충돌 없음)
+  06:22:28  CPU 모니터 종료 → 날씨 화면 복원
+```
+
+---
+
 ## 6. 최종 파일 구성
 
 ```
 ~/Documents/GeekMagic/weather-clock/
-├── main.py                  ← 전체 진입점 (날씨+시계 서비스)
-├── config.json              ← 설정 파일
+├── main.py                  ← 전체 진입점 (날씨+시계 + CPU 모니터 통합)
+├── config.json              ← 설정 파일 (cpu_monitor 섹션 포함)
 ├── requirements.txt
 ├── install.sh               ← systemd 서비스 자동 등록
 ├── test_display.py          ← 화면 표시 단위 테스트
-├── cpu_monitor.py           ← CPU/메모리 모니터 (독립 실행)
+├── cpu_monitor.py           ← CPU/메모리 모니터 (standalone 독립 실행용)
 ├── venv/                    ← Python 가상환경
 ├── src/
 │   ├── weather_api.py       ← OpenWeatherMap 연동
-│   ├── image_generator.py   ← Pillow 이미지 생성
+│   ├── image_generator.py   ← Pillow 날씨+시계 이미지 생성
+│   ├── cpu_image.py         ← Pillow CPU 모니터 이미지 생성 (공용 모듈)
 │   ├── push_client.py       ← GeekMagic HTTP 클라이언트
-│   ├── scheduler.py         ← 스케줄러
+│   ├── scheduler.py         ← 스케줄러 (날씨+CPU 통합, 스레드 조율)
 │   └── web_config.py        ← Flask 설정 서버
 ├── templates/
-│   └── index.html           ← 웹 설정 UI
+│   └── index.html           ← 웹 설정 UI (CPU 모니터 토글 포함)
 ├── cache/                   ← 날씨 캐시, 이미지 캐시
 └── logs/                    ← 실행 로그
 ```
@@ -286,10 +368,12 @@ def restore_theme():
 | requests 버그 우회 | ✅ 완료 | http.client 직접 사용 |
 | weather_clock.jpg 파일명 발견 | ✅ 완료 | 핵심 돌파구 |
 | cpu_monitor.py 테마 전환 깜박임 | ✅ 완료 | 복합 쿼리(`theme=3&img=...`) 단일 요청으로 해결 |
-| main.py 날씨+시계 서비스 | ⏸ 대기 | OpenWeatherMap API Key 발급 후 테스트 필요 |
-| install.sh systemd 등록 | ⏸ 대기 | 경로 문제 수정 완료, 재시도 필요 |
+| main.py + cpu_monitor.py 충돌 | ✅ 완료 | 스케줄러 통합 (threading.Lock + _showing_cpu 플래그) |
+| CPU 모니터 웹 UI 설정 | ✅ 완료 | 토글·표시시간·주기 웹에서 설정 가능 |
+| main.py systemd 서비스 | ✅ 운영 중 | weather-clock.service 자동 시작 |
+| main.py 날씨+시계 서비스 | 🔄 더미 동작 중 | OpenWeatherMap API Key 발급 후 실 데이터 전환 필요 |
 | OpenWeatherMap API Key | ⏸ 대기 | 미발급 |
-| 웹 설정 UI (Flask) | ✅ 코드 완성 | 서비스 등록 후 테스트 필요 |
+| 웹 설정 UI (Flask) | ✅ 운영 중 | http://192.168.219.116:8080 |
 
 ---
 
@@ -305,4 +389,4 @@ def restore_theme():
 
 ---
 
-*최종 업데이트: 2026-05-08*
+*최종 업데이트: 2026-05-09*

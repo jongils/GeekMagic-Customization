@@ -56,6 +56,11 @@ nano config.json
     "enabled": false,
     "start": "23:00",
     "end": "07:00"
+  },
+  "cpu_monitor": {
+    "enabled": false,
+    "show_sec": 10,
+    "interval_sec": 60
   }
 }
 ```
@@ -71,6 +76,9 @@ nano config.json
 | `weather_interval_min` | 날씨 API 호출 주기 (분) | `10` |
 | `web_port` | 웹 설정 UI 포트 | `8080` |
 | `night_mode` | 야간 모드 (지정 시간대 Push 중단) | 비활성화 |
+| `cpu_monitor.enabled` | CPU 모니터 교대 표시 활성화 | `false` |
+| `cpu_monitor.show_sec` | CPU 화면 표시 시간 (초) | `10` |
+| `cpu_monitor.interval_sec` | 교대 주기 (초) — 날씨:(interval-show)초 + CPU:show초 | `60` |
 
 ### 실행
 
@@ -80,12 +88,18 @@ venv/bin/python3 main.py
 ```
 웹 설정 UI: `http://[라즈베리파이 IP]:8080`
 
-**CPU 모니터 (독립 실행)**
+CPU 모니터 교대 표시는 `config.json`의 `cpu_monitor.enabled`를 `true`로 설정하거나
+웹 UI에서 토글로 켜고 끌 수 있습니다.
+
+> **주의**: `main.py`가 실행 중일 때 `cpu_monitor.py`를 별도로 실행하면 충돌이 발생합니다.  
+> CPU 모니터 기능은 반드시 `main.py` 내 통합 스케줄러를 통해 사용하세요.
+
+**CPU 모니터 (standalone — main.py 미실행 시 전용)**
 ```bash
 venv/bin/python3 cpu_monitor.py
 ```
-CPU 정보 10초 표시 → 원래 테마(Weather Clock Today) 50초 → 반복  
-종료: `Ctrl+C` (자동으로 원래 테마 복원)
+CPU 정보 10초 표시 → 장치 내장 테마(1) 50초 → 반복  
+종료: `Ctrl+C`
 
 **화면 표시 테스트**
 ```bash
@@ -95,22 +109,34 @@ venv/bin/python3 test_display.py
 ### 프로젝트 구조
 
 ```
-├── main.py                  # 메인 진입점 (날씨+시계 + 웹 UI)
-├── cpu_monitor.py           # CPU 모니터 (독립 실행)
+├── main.py                  # 메인 진입점 (날씨+시계 + CPU 모니터 통합)
+├── cpu_monitor.py           # CPU 모니터 (standalone 독립 실행 전용)
 ├── test_display.py          # 화면 연결 테스트
-├── config.json              # 설정 파일
+├── config.json              # 설정 파일 (cpu_monitor 섹션 포함)
 ├── requirements.txt
 ├── install.sh               # systemd 서비스 등록 스크립트
 ├── src/
 │   ├── weather_api.py       # OpenWeatherMap API 연동
-│   ├── image_generator.py   # Pillow 기반 240×240 이미지 생성
+│   ├── image_generator.py   # Pillow 날씨+시계 이미지 생성
+│   ├── cpu_image.py         # Pillow CPU 모니터 이미지 생성 (공용 모듈)
 │   ├── push_client.py       # GeekMagic HTTP API 클라이언트
-│   ├── scheduler.py         # 주기적 업데이트 스케줄러
+│   ├── scheduler.py         # 스케줄러 (날씨+CPU 스레드 조율, Lock)
 │   └── web_config.py        # Flask 웹 설정 서버
 ├── templates/
-│   └── index.html           # 웹 설정 UI
+│   └── index.html           # 웹 설정 UI (CPU 모니터 토글 포함)
 ├── cache/                   # 날씨 JSON 캐시 + 현재 이미지
 └── logs/                    # 실행 로그
+```
+
+### 아키텍처
+
+```
+main.py
+  ├── [scheduler thread]    날씨+시계 이미지 → Push (매 N초)
+  │     └─ _showing_cpu=True 이면 자동 skip
+  ├── [cpu-monitor thread]  N초 대기 → CPU 이미지 Push → N초 표시 → 날씨 복원
+  │     └─ threading.Lock으로 날씨 Push와 충돌 방지
+  └── [Flask thread]        웹 설정 UI (포트 8080)
 ```
 
 ### 장치 HTTP API 주요 엔드포인트
@@ -180,6 +206,11 @@ nano config.json
     "enabled": false,
     "start": "23:00",
     "end": "07:00"
+  },
+  "cpu_monitor": {
+    "enabled": false,
+    "show_sec": 10,
+    "interval_sec": 60
   }
 }
 ```
@@ -195,6 +226,9 @@ nano config.json
 | `weather_interval_min` | Weather API fetch interval in minutes | `10` |
 | `web_port` | Web config UI port | `8080` |
 | `night_mode` | Suppress pushes during specified hours | disabled |
+| `cpu_monitor.enabled` | Enable alternating CPU monitor display | `false` |
+| `cpu_monitor.show_sec` | Duration to show CPU screen (seconds) | `10` |
+| `cpu_monitor.interval_sec` | Full cycle length — weather:(interval-show)s + CPU:show s | `60` |
 
 ### Usage
 
@@ -204,12 +238,16 @@ venv/bin/python3 main.py
 ```
 Web config UI available at: `http://[raspberry-pi-ip]:8080`
 
-**CPU Monitor (standalone)**
+Enable CPU monitor alternation via `config.json` (`cpu_monitor.enabled: true`) or the web UI toggle.
+
+> **Warning**: Running `cpu_monitor.py` while `main.py` is active causes a race condition — both processes fight over the device theme. Use the integrated scheduler in `main.py` instead.
+
+**CPU Monitor (standalone — only when main.py is NOT running)**
 ```bash
 venv/bin/python3 cpu_monitor.py
 ```
-Cycles: CPU stats for 10 seconds → original device theme for 50 seconds → repeat  
-Stop with `Ctrl+C` (restores original theme automatically)
+Cycles: CPU stats for 10 seconds → built-in device theme for 50 seconds → repeat  
+Stop with `Ctrl+C`
 
 **Display connection test**
 ```bash
@@ -219,22 +257,34 @@ venv/bin/python3 test_display.py
 ### Project Structure
 
 ```
-├── main.py                  # Entry point (weather clock + web UI)
-├── cpu_monitor.py           # Standalone CPU monitor
+├── main.py                  # Entry point (weather clock + CPU monitor integrated)
+├── cpu_monitor.py           # Standalone CPU monitor (use only without main.py)
 ├── test_display.py          # Display connection test
-├── config.json              # Configuration file
+├── config.json              # Configuration file (includes cpu_monitor section)
 ├── requirements.txt
 ├── install.sh               # systemd service registration script
 ├── src/
 │   ├── weather_api.py       # OpenWeatherMap API integration
-│   ├── image_generator.py   # Pillow-based 240×240 image renderer
+│   ├── image_generator.py   # Pillow weather+clock image renderer
+│   ├── cpu_image.py         # Pillow CPU monitor image renderer (shared module)
 │   ├── push_client.py       # GeekMagic HTTP API client
-│   ├── scheduler.py         # Periodic update scheduler
+│   ├── scheduler.py         # Scheduler (weather+CPU thread coordination, Lock)
 │   └── web_config.py        # Flask web config server
 ├── templates/
-│   └── index.html           # Web config UI
+│   └── index.html           # Web config UI (with CPU monitor toggle)
 ├── cache/                   # Weather JSON cache + current image
 └── logs/                    # Runtime logs
+```
+
+### Architecture
+
+```
+main.py
+  ├── [scheduler thread]    Weather image → Push every N seconds
+  │     └─ Skipped automatically when _showing_cpu=True
+  ├── [cpu-monitor thread]  Wait N sec → Push CPU image → Wait show sec → Restore weather
+  │     └─ threading.Lock prevents concurrent push with weather thread
+  └── [Flask thread]        Web config UI (port 8080)
 ```
 
 ### Key Device API Endpoints
@@ -262,4 +312,4 @@ MIT
 
 ---
 
-*Last updated: 2026-05-08*
+*Last updated: 2026-05-09*
