@@ -1,0 +1,17 @@
+{
+  "device_ip": "192.168.219.119",
+  "city": "Pyeongtaek-si",
+  "api_key": "",
+  "temp_unit": "metric",
+  "time_format": "24h",
+  "refresh_interval_sec": 60,
+  "weather_interval_min": 10,
+  "push_timeout_sec": 8,
+  "push_retries": 3,
+  "web_port": 8080,
+  "night_mode": {
+    "enabled": false,
+    "start": "23:00",
+    "end": "07:00"
+  }
+}

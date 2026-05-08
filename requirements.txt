@@ -1,0 +1,6 @@
+pillow
+requests
+flask
+schedule
+pytz
+psutil

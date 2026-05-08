@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+cache/
+logs/
+*.log
+.env
+.claude/
+push_client.py

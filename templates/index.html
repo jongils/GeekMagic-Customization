@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Clock 설정</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0d1225;
+      color: #c8d0e8;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container { max-width: 560px; margin: 0 auto; }
+
+    /* 헤더 */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 0 24px;
+    }
+    header h1 { font-size: 1.4rem; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .status-badge {
+      padding: 4px 12px; border-radius: 20px; font-size: .75rem; font-weight: 600;
+    }
+    .status-badge.online  { background: #0a3d1f; color: #4ade80; border: 1px solid #16a34a; }
+    .status-badge.offline { background: #3d0a0a; color: #f87171; border: 1px solid #dc2626; }
+
+    /* 알림 배너 */
+    .banner {
+      background: #0a3d1f; border: 1px solid #16a34a; color: #4ade80;
+      padding: 10px 16px; border-radius: 8px; margin-bottom: 20px;
+      font-size: .875rem; display: none;
+    }
+    .banner.show { display: block; }
+
+    /* 카드 */
+    .card {
+      background: #161d3a; border: 1px solid #252e55;
+      border-radius: 14px; padding: 22px; margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: .8rem; text-transform: uppercase; letter-spacing: .08em;
+      color: #5b6a9a; margin-bottom: 18px; display: flex; align-items: center; gap: 6px;
+    }
+
+    /* 폼 요소 */
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: .825rem; color: #8a96c0; margin-bottom: 6px; }
+    input[type="text"], input[type="password"], input[type="time"], select {
+      width: 100%; padding: 10px 14px;
+      background: #0d1225; border: 1px solid #252e55; border-radius: 8px;
+      color: #c8d0e8; font-size: .9rem; outline: none; transition: border-color .2s;
+    }
+    input:focus, select:focus { border-color: #3b5bdb; }
+    select option { background: #161d3a; }
+
+    /* 라디오 그룹 */
+    .radio-group { display: flex; gap: 10px; }
+    .radio-group label {
+      flex: 1; padding: 9px; border: 1px solid #252e55; border-radius: 8px;
+      text-align: center; cursor: pointer; transition: all .2s; font-size: .85rem; color: #8a96c0;
+    }
+    .radio-group input[type="radio"] { display: none; }
+    .radio-group input[type="radio"]:checked + label {
+      border-color: #3b5bdb; background: #1a2560; color: #7c9cff;
+    }
+
+    /* 토글 스위치 */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+    }
+    .toggle-row span { font-size: .9rem; }
+    .toggle { position: relative; width: 44px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; background: #252e55;
+      border-radius: 24px; cursor: pointer; transition: .3s;
+    }
+    .slider::before {
+      content: ""; position: absolute;
+      width: 18px; height: 18px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: .3s;
+    }
+    .toggle input:checked + .slider { background: #3b5bdb; }
+    .toggle input:checked + .slider::before { transform: translateX(20px); }
+
+    /* 야간 모드 시간 */
+    .time-range { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+
+    /* 미리보기 */
+    .preview-box {
+      background: #0d1225; border: 1px solid #252e55; border-radius: 10px;
+      padding: 14px; text-align: center;
+    }
+    .preview-box img {
+      width: 120px; height: 120px; border-radius: 8px;
+      image-rendering: pixelated; border: 1px solid #252e55;
+    }
+    .preview-box .no-preview { color: #3d4a70; font-size: .85rem; padding: 30px 0; }
+
+    /* 버튼 */
+    .btn-row { display: flex; gap: 10px; margin-top: 8px; }
+    .btn {
+      flex: 1; padding: 12px; border: none; border-radius: 10px;
+      font-size: .9rem; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    .btn-primary { background: #3b5bdb; color: #fff; }
+    .btn-primary:hover { background: #2f4bc7; }
+    .btn-secondary { background: #1e2a50; color: #7c9cff; border: 1px solid #252e55; }
+    .btn-secondary:hover { background: #252e65; }
+    .btn-ghost { background: transparent; color: #5b6a9a; border: 1px solid #252e55; }
+    .btn-ghost:hover { background: #161d3a; }
+
+    /* IP 표시 */
+    .ip-hint { font-size: .75rem; color: #3d4a70; margin-top: 5px; }
+
+    /* 반응형 */
+    @media (max-width: 480px) {
+      .btn-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🌤 Weather Clock</h1>
+    {% if device_online %}
+      <span class="status-badge online">● 장치 연결됨</span>
+    {% else %}
+      <span class="status-badge offline">● 장치 오프라인</span>
+    {% endif %}
+  </header>
+
+  {% if request.args.get('saved') %}
+  <div class="banner show">✅ 설정이 저장되었습니다.</div>
+  {% endif %}
+
+  <!-- 미리보기 -->
+  <div class="card">
+    <h2>📺 현재 화면 미리보기</h2>
+    <div class="preview-box">
+      <img id="preview-img" src="/preview?t={{ range(9999) | random }}"
+           onerror="this.style.display='none'; document.getElementById('no-prev').style.display='block'">
+      <div id="no-prev" class="no-preview" style="display:none">이미지 없음<br>화면 업데이트 후 표시됩니다</div>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-secondary" onclick="pushNow()">▶ 지금 업데이트</button>
+      <button class="btn btn-ghost" onclick="refreshPreview()">↻ 미리보기 새로고침</button>
+    </div>
+  </div>
+
+  <!-- 설정 폼 -->
+  <form method="POST" action="/config">
+
+    <!-- 장치 설정 -->
+    <div class="card">
+      <h2>📡 장치 설정</h2>
+      <div class="field">
+        <label>GeekMagic 장치 IP</label>
+        <input type="text" name="device_ip" value="{{ config.device_ip }}" placeholder="192.168.x.x">
+        <p class="ip-hint">현재: http://{{ config.device_ip }}/</p>
+      </div>
+    </div>
+
+    <!-- 날씨 설정 -->
+    <div class="card">
+      <h2>🌍 날씨 설정</h2>
+      <div class="field">
+        <label>도시명 (OpenWeatherMap 기준)</label>
+        <input type="text" name="city" value="{{ config.city }}" placeholder="Pyeongtaek-si">
+      </div>
+      <div class="field">
+        <label>OpenWeatherMap API Key</label>
+        <input type="password" name="api_key" value="{{ config.api_key }}" placeholder="API Key 입력">
+      </div>
+      <div class="field">
+        <label>온도 단위</label>
+        <div class="radio-group">
+          <input type="radio" name="temp_unit" id="tu_c" value="metric"
+            {{ 'checked' if config.temp_unit == 'metric' }}>
+          <label for="tu_c">°C (섭씨)</label>
+          <input type="radio" name="temp_unit" id="tu_f" value="imperial"
+            {{ 'checked' if config.temp_unit == 'imperial' }}>
+          <label for="tu_f">°F (화씨)</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 표시 설정 -->
+    <div class="card">
+      <h2>🕐 표시 설정</h2>
+      <div class="field">
+        <label>시간 형식</label>
+        <div class="radio-group">
+          <input type="radio" name="time_format" id="tf_24" value="24h"
+            {{ 'checked' if config.time_format == '24h' }}>
+          <label for="tf_24">24시간</label>
+          <input type="radio" name="time_format" id="tf_12" value="12h"
+            {{ 'checked' if config.time_format == '12h' }}>
+          <label for="tf_12">12시간 (AM/PM)</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>시계 업데이트 주기 (초)</label>
+        <select name="refresh_interval_sec">
+          {% for s in [30, 60, 120] %}
+          <option value="{{ s }}" {{ 'selected' if config.refresh_interval_sec == s }}>
+            {{ s }}초마다
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>날씨 업데이트 주기 (분)</label>
+        <select name="weather_interval_min">
+          {% for m in [5, 10, 20, 30, 60] %}
+          <option value="{{ m }}" {{ 'selected' if config.weather_interval_min == m }}>
+            {{ m }}분마다
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- 야간 모드 -->
+    <div class="card">
+      <h2>🌙 야간 모드</h2>
+      <div class="toggle-row">
+        <span>야간 모드 (지정 시간대 Push 중단)</span>
+        <label class="toggle">
+          <input type="checkbox" name="night_mode_enabled"
+            {{ 'checked' if config.night_mode.enabled }}>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="time-range">
+        <div class="field">
+          <label>시작 시간</label>
+          <input type="time" name="night_mode_start" value="{{ config.night_mode.start }}">
+        </div>
+        <div class="field">
+          <label>종료 시간</label>
+          <input type="time" name="night_mode_end" value="{{ config.night_mode.end }}">
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary">💾 설정 저장</button>
+    </div>
+  </form>
+
+  <p style="text-align:center; color:#2a3360; font-size:.75rem; margin-top:24px; padding-bottom:20px;">
+    Weather Clock • Raspberry Pi 5 • 192.168.219.116
+  </p>
+
+</div>
+
+<script>
+  async function pushNow() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = "⏳ 업데이트 중...";
+    try {
+      const r = await fetch("/push-now");
+      const d = await r.json();
+      btn.textContent = d.result === "ok" ? "✅ 완료!" : "❌ 실패";
+      if (d.result === "ok") setTimeout(() => refreshPreview(), 1500);
+    } catch(e) {
+      btn.textContent = "❌ 오류";
+    }
+    setTimeout(() => { btn.disabled = false; btn.textContent = "▶ 지금 업데이트"; }, 3000);
+  }
+
+  function refreshPreview() {
+    const img = document.getElementById("preview-img");
+    img.style.display = "block";
+    document.getElementById("no-prev").style.display = "none";
+    img.src = "/preview?t=" + Date.now();
+  }
+
+  // 저장 배너 자동 숨김
+  const banner = document.querySelector(".banner.show");
+  if (banner) setTimeout(() => banner.style.opacity = "0", 3000);
+</script>
+</body>
+</html>
