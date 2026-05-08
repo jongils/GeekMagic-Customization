@@ -150,9 +150,11 @@ def show_cpu():
     ts = datetime.datetime.now(KST).strftime("%H:%M:%S")
     print(f"[{ts}] CPU {cpu:.0f}%  MEM {mem:.0f}%  TEMP {temp:.1f}°C")
 
-    # 업로드 후 테마 전환+이미지 지정을 단일 요청으로 처리 → 중간 플래시 없음
+    # 3단계 분리: 업로드 → theme=3 전환 → 즉시 img 지정 (sleep 없이)
+    # ESP8266 펌웨어는 theme=3&img= 조합 파라미터에서 img를 무시함
     esp_upload(OUTPUT_PATH)
-    esp_get(f"/set?theme=3&img=/image//{FILENAME}")
+    esp_get("/set?theme=3")
+    esp_get(f"/set?img=/image//{FILENAME}")
     print(f"  ✅ CPU 화면 ({SHOW_SEC}초)")
 
 # ── 원래 테마 복원 ────────────────────────────────────────────

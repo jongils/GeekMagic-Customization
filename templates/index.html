@@ -265,23 +265,23 @@
       <div id="cpu_options" style="display:{{ 'block' if config.cpu_monitor and config.cpu_monitor.enabled else 'none' }}">
         <div class="time-range" style="margin-top:12px">
           <div class="field">
-            <label>CPU 표시 시간 (초)</label>
-            <select name="cpu_monitor_show_sec">
-              {% for s in [5, 10, 15, 20, 30] %}
+            <label>🖥 GeekMagic 테마 표시 시간 (초)</label>
+            <select name="cpu_monitor_rest_sec">
+              {% for s in [20, 30, 50, 60, 90, 120, 180, 300] %}
               <option value="{{ s }}"
-                {{ 'selected' if config.cpu_monitor and config.cpu_monitor.show_sec == s }}>
+                {{ 'selected' if config.cpu_monitor and config.cpu_monitor.get('rest_sec', 50) == s }}>
                 {{ s }}초
               </option>
               {% endfor %}
             </select>
           </div>
           <div class="field">
-            <label>전환 주기 (초)</label>
-            <select name="cpu_monitor_interval_sec">
-              {% for s in [30, 60, 120, 180, 300] %}
+            <label>📊 CPU 정보 표시 시간 (초)</label>
+            <select name="cpu_monitor_show_sec">
+              {% for s in [5, 10, 15, 20, 30] %}
               <option value="{{ s }}"
-                {{ 'selected' if config.cpu_monitor and config.cpu_monitor.interval_sec == s }}>
-                {{ s }}초마다
+                {{ 'selected' if config.cpu_monitor and config.cpu_monitor.show_sec == s }}>
+                {{ s }}초
               </option>
               {% endfor %}
             </select>
@@ -317,7 +317,8 @@
           </select>
         </div>
         <p class="ip-hint" style="margin-top:6px">
-          예) 표시 10초 / 주기 60초 → 복원 화면 50초 → CPU 10초 → 반복
+          ▶ 반복 순서: GeekMagic 테마 표시 → CPU 정보 표시 → GeekMagic 테마 표시 → …<br>
+          예) 테마 50초 + CPU 10초 → 50초 동안 날씨/시계, 10초 동안 CPU 정보
         </p>
       </div>
     </div>

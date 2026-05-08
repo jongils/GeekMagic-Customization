@@ -16,8 +16,8 @@
   },
   "cpu_monitor": {
     "enabled": true,
-    "show_sec": 10,
-    "interval_sec": 60,
+    "show_sec": 30,
+    "rest_sec": 30,
     "restore_theme": 1
   }
 }

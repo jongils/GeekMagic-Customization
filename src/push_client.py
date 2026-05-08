@@ -70,9 +70,13 @@ class GeekMagicClient:
 
     def push_image(self, image_path: str) -> bool:
         """
-        이미지를 장치에 업로드하고 화면에 표시 (깜박임 없는 원자적 처리)
-        1) POST /doUpload → 파일 업로드 (테마 전환 전에 먼저)
-        2) GET  /set?theme=3&img= → 테마 전환 + 이미지 지정 단일 요청
+        이미지를 장치에 업로드하고 화면에 표시
+        1) POST /doUpload    → 파일 업로드 (테마와 무관하게 먼저 전송)
+        2) GET  /set?theme=3 → Photo Album 모드 전환 (장치가 이미지 목록 초기화)
+        3) GET  /set?img=    → 즉시 이미지 지정 (sleep 없이 연속 실행)
+
+        Note: theme=3&img= 조합 파라미터는 ESP8266 펌웨어가 img를 무시함.
+              theme 전환과 img 지정은 반드시 별도 요청으로 분리해야 함.
         """
         if not os.path.exists(image_path):
             logger.error(f"이미지 파일 없음: {image_path}")
@@ -80,7 +84,7 @@ class GeekMagicClient:
 
         for attempt in range(1, self.retries + 1):
             try:
-                # ── 1단계: 이미지 업로드 (테마 전환 전) ────────────
+                # ── 1단계: 이미지 업로드 ────────────────────────────
                 status, _ = self._post_file(
                     "/doUpload?dir=/image/",
                     image_path,
@@ -91,13 +95,19 @@ class GeekMagicClient:
                     time.sleep(2)
                     continue
 
-                # ── 2단계: 테마 전환 + 이미지 지정 원자적 처리 ─────
-                # theme=3&img= 단일 요청으로 전환 순간 이전 이미지 노출 방지
-                status2, body2 = self._get(f"/set?theme=3&img={UPLOAD_PATH}")
-                if status2 == 200:
+                # ── 2단계: Photo Album 테마 전환 ─────────────────────
+                status2, _ = self._get("/set?theme=3")
+                if status2 != 200:
+                    logger.warning(f"테마 전환 실패: HTTP {status2}")
+                    time.sleep(2)
+                    continue
+
+                # ── 3단계: 이미지 즉시 지정 (sleep 없이 연속 실행) ──
+                status3, body3 = self._get(f"/set?img={UPLOAD_PATH}")
+                if status3 == 200:
                     logger.info("장치 화면 업데이트 완료 ✅")
                     return True
-                logger.warning(f"화면 지정 실패: HTTP {status2} / {body2.strip()}")
+                logger.warning(f"이미지 지정 실패: HTTP {status3} / {body3.strip()}")
 
             except Exception as e:
                 logger.error(f"Push 오류 (시도 {attempt}/{self.retries}): {e}")

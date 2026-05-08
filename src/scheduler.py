@@ -88,32 +88,49 @@ class WeatherClockScheduler:
         """
         CPU 모니터 주기 실행 스레드
 
-        restore_theme == 0 : 내장 테마(rest_sec) → CPU(show_sec) → 날씨 Push 복원
+        restore_theme == 0 : 날씨 화면(rest_sec) → CPU(show_sec) → 날씨 Push 복원
         restore_theme 1~7  : 내장 테마(rest_sec) → CPU(show_sec) → /set?theme=N 복원
+
+        매 사이클 시작 시 self.config를 다시 읽어 웹 UI 변경 사항을 반영한다.
         """
         from src.cpu_image import generate_cpu_image
         from src.image_generator import save_image
-
-        cfg           = self.config.get("cpu_monitor", {})
-        show_sec      = max(int(cfg.get("show_sec",      10)), 1)
-        interval_sec  = max(int(cfg.get("interval_sec",  60)), show_sec + 5)
-        restore_theme = int(cfg.get("restore_theme",      0))
-        rest_sec      = interval_sec - show_sec
 
         cpu_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "cache", "cpu_current.jpg"
         )
 
+        # ── 최초 기동 시 설정 읽기 ──────────────────────────
+        cfg           = self.config.get("cpu_monitor", {})
+        show_sec      = max(int(cfg.get("show_sec",   10)), 1)
+        rest_sec      = max(int(cfg.get("rest_sec",   50)), 5)
+        restore_theme = int(cfg.get("restore_theme",   0))
+
         mode_label = f"내장 테마 {restore_theme}" if restore_theme else "날씨 화면"
         logger.info(
-            f"CPU 모니터 스레드 시작 — 표시 {show_sec}초 / 주기 {interval_sec}초 / 복원: {mode_label}"
+            f"CPU 모니터 스레드 시작 — 테마 {rest_sec}초 / CPU {show_sec}초 / 복원: {mode_label}"
         )
 
-        # ── 내장 테마 모드: 시작 시 먼저 테마 전환 ────────────
+        # ── 내장 테마 모드: 시작 시 즉시 테마 전환 ────────────
         if restore_theme:
             self.push_client.set_theme(restore_theme)
 
         while self._running:
+            # ── 매 사이클 시작 시 config 재로드 ──────────────
+            cfg       = self.config.get("cpu_monitor", {})
+            show_sec  = max(int(cfg.get("show_sec",  10)), 1)
+            rest_sec  = max(int(cfg.get("rest_sec",  50)), 5)
+            new_theme = int(cfg.get("restore_theme",  0))
+
+            # restore_theme 값이 변경된 경우 즉시 전환
+            if new_theme != restore_theme:
+                logger.info(f"복원 테마 변경 감지: {restore_theme} → {new_theme}")
+                restore_theme = new_theme
+                if restore_theme:
+                    self.push_client.set_theme(restore_theme)
+
+            logger.debug(f"사이클: 테마 {rest_sec}초 → CPU {show_sec}초")
+
             # ── 대기 기간 (내장 테마 or 날씨 화면 표시 중) ────
             for _ in range(rest_sec):
                 if not self._running:

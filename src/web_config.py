@@ -56,7 +56,7 @@ def get_default_config() -> dict:
         "cpu_monitor": {
             "enabled":       False,
             "show_sec":      10,
-            "interval_sec":  60,
+            "rest_sec":      50,
             "restore_theme": 0,
         },
     }
@@ -93,15 +93,19 @@ def save_config_route():
         if "cpu_monitor" not in config:
             config["cpu_monitor"] = {}
         config["cpu_monitor"]["enabled"]       = data.get("cpu_monitor_enabled") == "on"
-        config["cpu_monitor"]["show_sec"]      = int(data.get("cpu_monitor_show_sec",      10))
-        config["cpu_monitor"]["interval_sec"]  = int(data.get("cpu_monitor_interval_sec",  60))
-        config["cpu_monitor"]["restore_theme"] = int(data.get("cpu_monitor_restore_theme",  0))
+        config["cpu_monitor"]["show_sec"]      = int(data.get("cpu_monitor_show_sec",  10))
+        config["cpu_monitor"]["rest_sec"]      = int(data.get("cpu_monitor_rest_sec",  50))
+        config["cpu_monitor"]["restore_theme"] = int(data.get("cpu_monitor_restore_theme", 0))
 
         save_config(config)
 
         # push_client IP 갱신
         if _push_client:
             _push_client.device_ip = config["device_ip"]
+
+        # 스케줄러 config 실시간 갱신 (재시작 없이 반영)
+        if _scheduler:
+            _scheduler.config.update(config)
 
         logger.info("설정 저장 완료")
         return redirect(url_for("index") + "?saved=1")
