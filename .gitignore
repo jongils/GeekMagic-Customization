@@ -8,4 +8,4 @@ logs/
 *.log
 .env
 .claude/
-push_client.py
+/push_client.py
