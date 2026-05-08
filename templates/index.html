@@ -287,8 +287,37 @@
             </select>
           </div>
         </div>
+        <div class="field" style="margin-top:12px">
+          <label>CPU 종료 후 복원 화면</label>
+          <select name="cpu_monitor_restore_theme">
+            <option value="0"
+              {{ 'selected' if config.cpu_monitor and config.cpu_monitor.restore_theme == 0 }}>
+              날씨+시계 (커스텀 이미지)
+            </option>
+            <option value="1"
+              {{ 'selected' if config.cpu_monitor and config.cpu_monitor.restore_theme == 1 }}>
+              내장 테마 1 — Weather Clock Today
+            </option>
+            <option value="2"
+              {{ 'selected' if config.cpu_monitor and config.cpu_monitor.restore_theme == 2 }}>
+              내장 테마 2 — Weather Forecast
+            </option>
+            <option value="4"
+              {{ 'selected' if config.cpu_monitor and config.cpu_monitor.restore_theme == 4 }}>
+              내장 테마 4 — Time Style 1
+            </option>
+            <option value="5"
+              {{ 'selected' if config.cpu_monitor and config.cpu_monitor.restore_theme == 5 }}>
+              내장 테마 5 — Time Style 2
+            </option>
+            <option value="7"
+              {{ 'selected' if config.cpu_monitor and config.cpu_monitor.restore_theme == 7 }}>
+              내장 테마 7 — Simple Weather Clock
+            </option>
+          </select>
+        </div>
         <p class="ip-hint" style="margin-top:6px">
-          예) 표시 10초 / 주기 60초 → 날씨 50초 → CPU 10초 → 반복
+          예) 표시 10초 / 주기 60초 → 복원 화면 50초 → CPU 10초 → 반복
         </p>
       </div>
     </div>

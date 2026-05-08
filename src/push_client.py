@@ -108,6 +108,18 @@ class GeekMagicClient:
         logger.error(f"Push 최종 실패 ({self.retries}회 시도)")
         return False
 
+    def set_theme(self, theme: int) -> bool:
+        """장치 내장 테마 전환 (이미지 업로드 없이 테마만 변경)"""
+        try:
+            status, _ = self._get(f"/set?theme={theme}")
+            if status == 200:
+                logger.info(f"테마 {theme} 전환 완료")
+                return True
+            logger.warning(f"테마 전환 실패: HTTP {status}")
+        except Exception as e:
+            logger.error(f"테마 전환 오류: {e}")
+        return False
+
     def is_online(self) -> bool:
         """장치 온라인 여부 확인"""
         try:

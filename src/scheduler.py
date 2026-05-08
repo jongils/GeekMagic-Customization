@@ -50,9 +50,18 @@ class WeatherClockScheduler:
         logger.info("날씨 데이터 갱신 중...")
         self._weather_cache = self.weather_api.get_weather()
 
+    def _restore_theme(self) -> int:
+        """복원 테마 번호 반환 (0 = 날씨 화면 Push, 1~7 = 장치 내장 테마)"""
+        return int(self.config.get("cpu_monitor", {}).get("restore_theme", 0))
+
     # ── 날씨 화면 Push ────────────────────────────────────────
     def _update_display(self):
-        """날씨+시계 이미지 생성 → 장치 Push (CPU 표시 중엔 건너뜀)"""
+        """날씨+시계 이미지 생성 → 장치 Push
+        restore_theme != 0 이면 내장 테마 모드이므로 날씨 Push 불필요, skip.
+        """
+        if self._restore_theme() != 0:
+            logger.debug("내장 테마 모드 — 날씨 Push 건너뜀")
+            return
         if self._showing_cpu:
             logger.debug("CPU 모니터 표시 중 — 날씨 Push 건너뜀")
             return
@@ -78,25 +87,34 @@ class WeatherClockScheduler:
     def _cpu_monitor_loop(self):
         """
         CPU 모니터 주기 실행 스레드
-        날씨 화면(rest_sec) → CPU 화면(show_sec) → 날씨 복원 → 반복
+
+        restore_theme == 0 : 내장 테마(rest_sec) → CPU(show_sec) → 날씨 Push 복원
+        restore_theme 1~7  : 내장 테마(rest_sec) → CPU(show_sec) → /set?theme=N 복원
         """
         from src.cpu_image import generate_cpu_image
         from src.image_generator import save_image
 
-        cfg          = self.config.get("cpu_monitor", {})
-        show_sec     = max(int(cfg.get("show_sec",    10)), 1)
-        interval_sec = max(int(cfg.get("interval_sec", 60)), show_sec + 5)
-        rest_sec     = interval_sec - show_sec
+        cfg           = self.config.get("cpu_monitor", {})
+        show_sec      = max(int(cfg.get("show_sec",      10)), 1)
+        interval_sec  = max(int(cfg.get("interval_sec",  60)), show_sec + 5)
+        restore_theme = int(cfg.get("restore_theme",      0))
+        rest_sec      = interval_sec - show_sec
 
         cpu_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "cache", "cpu_current.jpg"
         )
+
+        mode_label = f"내장 테마 {restore_theme}" if restore_theme else "날씨 화면"
         logger.info(
-            f"CPU 모니터 스레드 시작 — 표시 {show_sec}초 / 주기 {interval_sec}초"
+            f"CPU 모니터 스레드 시작 — 표시 {show_sec}초 / 주기 {interval_sec}초 / 복원: {mode_label}"
         )
 
+        # ── 내장 테마 모드: 시작 시 먼저 테마 전환 ────────────
+        if restore_theme:
+            self.push_client.set_theme(restore_theme)
+
         while self._running:
-            # ── 날씨 표시 기간 대기 ───────────────────────
+            # ── 대기 기간 (내장 테마 or 날씨 화면 표시 중) ────
             for _ in range(rest_sec):
                 if not self._running:
                     return
@@ -105,7 +123,7 @@ class WeatherClockScheduler:
             if not self._running:
                 return
 
-            # ── CPU 이미지 생성 및 Push ───────────────────
+            # ── CPU 이미지 생성 및 Push ───────────────────────
             self._showing_cpu = True
             try:
                 with self._push_lock:
@@ -118,7 +136,7 @@ class WeatherClockScheduler:
                 self._showing_cpu = False
                 continue
 
-            # ── CPU 표시 기간 대기 ────────────────────────
+            # ── CPU 표시 기간 대기 ────────────────────────────
             for _ in range(show_sec):
                 if not self._running:
                     self._showing_cpu = False
@@ -130,9 +148,15 @@ class WeatherClockScheduler:
             if not self._running:
                 return
 
-            # ── 날씨 화면 즉시 복원 ───────────────────────
-            logger.info("CPU 모니터 종료 → 날씨 화면 복원")
-            self._update_display()
+            # ── 복원 ──────────────────────────────────────────
+            if restore_theme:
+                # 내장 테마로 복원 (/set?theme=N, 이미지 업로드 없음)
+                logger.info(f"CPU 종료 → 내장 테마 {restore_theme} 복원")
+                self.push_client.set_theme(restore_theme)
+            else:
+                # 날씨 화면 복원 (weather_clock.jpg Push)
+                logger.info("CPU 종료 → 날씨 화면 복원")
+                self._update_display()
 
     # ── 스케줄 등록 ───────────────────────────────────────────
     def setup_schedule(self):
