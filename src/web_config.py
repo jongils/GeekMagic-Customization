@@ -145,6 +145,18 @@ def save_config_route():
 
             import threading
 
+            # CPU 모니터 스레드 동적 시작 (설정 저장 시 활성화된 경우)
+            if (config.get("cpu_monitor", {}).get("enabled", False)
+                    and (_scheduler._cpu_thread is None
+                         or not _scheduler._cpu_thread.is_alive())):
+                _scheduler._cpu_thread = threading.Thread(
+                    target=_scheduler._cpu_monitor_loop,
+                    daemon=True,
+                    name="cpu-monitor",
+                )
+                _scheduler._cpu_thread.start()
+                logger.info("CPU 모니터 스레드 동적 시작")
+
             # 슬라이드쇼 스레드 동적 시작 (설정 저장 시 활성화된 경우)
             if (config.get("slideshow", {}).get("enabled", False)
                     and (_scheduler._slideshow_thread is None

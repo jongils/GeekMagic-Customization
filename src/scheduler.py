@@ -123,6 +123,16 @@ class WeatherClockScheduler:
             self.push_client.set_theme(restore_theme)
 
         while self._running:
+            # ── 비활성화 감지 시 스레드 자가 종료 ────────────
+            if not self.config.get("cpu_monitor", {}).get("enabled", False):
+                logger.info("CPU 모니터 비활성화 감지 — 스레드 종료")
+                self._showing_cpu = False
+                if restore_theme:
+                    self.push_client.set_theme(restore_theme)
+                else:
+                    self._update_display()
+                return
+
             # 슬라이드쇼가 활성화되어 있으면 CPU 모니터 양보
             if self.config.get("slideshow", {}).get("enabled", False):
                 time.sleep(5)
@@ -147,6 +157,8 @@ class WeatherClockScheduler:
             for _ in range(rest_sec):
                 if not self._running:
                     return
+                if not self.config.get("cpu_monitor", {}).get("enabled", False):
+                    break   # 다음 while 루프 최상단에서 종료 처리
                 time.sleep(1)
 
             if not self._running:
@@ -212,6 +224,16 @@ class WeatherClockScheduler:
             self.push_client.set_theme(restore_theme)
 
         while self._running:
+            # ── 비활성화 감지 시 스레드 자가 종료 ────────────
+            if not self.config.get("slideshow", {}).get("enabled", False):
+                logger.info("슬라이드쇼 비활성화 감지 — 스레드 종료")
+                self._showing_slideshow = False
+                if restore_theme:
+                    self.push_client.set_theme(restore_theme)
+                else:
+                    self._update_display()
+                return
+
             # ── 매 순환 시 config 재로드 ──────────────────────
             cfg           = self.config.get("slideshow", {})
             folder        = cfg.get("folder", "/home/pi5/Pictures")
@@ -243,6 +265,9 @@ class WeatherClockScheduler:
             for img_path in images:
                 if not self._running:
                     return
+                # 순환 중 비활성화 감지
+                if not self.config.get("slideshow", {}).get("enabled", False):
+                    break
 
                 # rest_sec > 0: 사진 사이에 내장 테마 표시
                 if rest_sec > 0:
@@ -251,6 +276,8 @@ class WeatherClockScheduler:
                     for _ in range(rest_sec):
                         if not self._running:
                             return
+                        if not self.config.get("slideshow", {}).get("enabled", False):
+                            break
                         time.sleep(1)
 
                 if not self._running:
@@ -277,6 +304,9 @@ class WeatherClockScheduler:
                     if not self._running:
                         self._showing_slideshow = False
                         return
+                    if not self.config.get("slideshow", {}).get("enabled", False):
+                        self._showing_slideshow = False
+                        break
                     time.sleep(1)
 
                 self._showing_slideshow = False
@@ -299,7 +329,19 @@ class WeatherClockScheduler:
 
         logger.info("콘솔 표시 스레드 시작")
 
+        restore_theme = int(self.config.get("console", {}).get("restore_theme", 1))
+
         while self._running:
+            # ── 비활성화 감지 시 스레드 자가 종료 ────────────
+            if not self.config.get("console", {}).get("enabled", False):
+                logger.info("콘솔 표시 비활성화 감지 — 스레드 종료")
+                self._showing_console = False
+                if restore_theme:
+                    self.push_client.set_theme(restore_theme)
+                else:
+                    self._update_display()
+                return
+
             cfg           = self.config.get("console", {})
             command       = cfg.get("command", "").strip()
             label         = cfg.get("label", "").strip()
@@ -319,6 +361,8 @@ class WeatherClockScheduler:
                 for _ in range(rest_sec):
                     if not self._running:
                         return
+                    if not self.config.get("console", {}).get("enabled", False):
+                        break
                     time.sleep(1)
 
                 if not self._running:
@@ -342,6 +386,9 @@ class WeatherClockScheduler:
                     if not self._running:
                         self._showing_console = False
                         return
+                    if not self.config.get("console", {}).get("enabled", False):
+                        self._showing_console = False
+                        break
                     time.sleep(1)
 
                 self._showing_console = False
@@ -362,6 +409,9 @@ class WeatherClockScheduler:
                     if not self._running:
                         self._showing_console = False
                         return
+                    if not self.config.get("console", {}).get("enabled", False):
+                        self._showing_console = False
+                        break
                     time.sleep(1)
 
     # ── 스케줄 등록 ───────────────────────────────────────────
