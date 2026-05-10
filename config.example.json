@@ -3,7 +3,7 @@
   "city": "Seoul",
   "api_key": "",
   "temp_unit": "metric",
-  "time_format": "12h",
+  "time_format": "24h",
   "refresh_interval_sec": 60,
   "weather_interval_min": 10,
   "push_timeout_sec": 8,
@@ -16,16 +16,16 @@
   },
   "cpu_monitor": {
     "enabled": false,
-    "show_sec": 30,
-    "rest_sec": 30,
+    "show_sec": 10,
+    "rest_sec": 50,
     "restore_theme": 1
   },
   "slideshow": {
     "enabled": false,
     "folder": "/home/pi/Pictures",
-    "show_sec": 5,
-    "rest_sec": 20,
-    "shuffle": true,
+    "show_sec": 10,
+    "rest_sec": 0,
+    "shuffle": false,
     "restore_theme": 1
   },
   "console": {

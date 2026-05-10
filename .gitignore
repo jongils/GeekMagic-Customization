@@ -9,3 +9,4 @@ logs/
 .env
 .claude/
 /push_client.py
+config.json

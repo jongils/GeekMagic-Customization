@@ -45,7 +45,8 @@ cd GeekMagic-WeatherClock
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 
-# 3. 설정 파일 편집 (필수 — 아래 항목 참고)
+# 3. 설정 파일 생성 (필수 — 아래 항목 참고)
+cp config.example.json config.json
 nano config.json
 
 # 4. (선택) systemd 서비스 등록 — 부팅 시 자동 시작
@@ -293,7 +294,8 @@ cd GeekMagic-WeatherClock
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 
-# 3. Edit configuration (required — see table below)
+# 3. Create configuration file (required — see table below)
+cp config.example.json config.json
 nano config.json
 
 # 4. (Optional) Register as systemd service for auto-start on boot
