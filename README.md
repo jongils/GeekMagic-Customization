@@ -77,7 +77,7 @@ bash install.sh
   },
   "slideshow": {
     "enabled": false,
-    "folder": "/home/pi5/Pictures",
+    "folder": "/home/pi/Pictures",
     "show_sec": 10,
     "rest_sec": 0,
     "shuffle": false,
@@ -100,7 +100,7 @@ bash install.sh
 | 항목 | 설명 | 기본값 |
 |------|------|--------|
 | `device_ip` | GeekMagic 장치 IP 주소 | — |
-| `city` | 날씨 조회 도시명 (OpenWeatherMap 기준) | `Pyeongtaek-si` |
+| `city` | 날씨 조회 도시명 (OpenWeatherMap 기준) | `Seoul` |
 | `api_key` | OpenWeatherMap API Key | `""` (없으면 더미 데이터) |
 | `temp_unit` | 온도 단위 `metric`(°C) / `imperial`(°F) | `metric` |
 | `time_format` | 시간 형식 `24h` / `12h` | `24h` |
@@ -123,7 +123,7 @@ bash install.sh
 | 항목 | 설명 | 기본값 |
 |------|------|--------|
 | `enabled` | 슬라이드쇼 활성화 | `false` |
-| `folder` | 사진 폴더 경로 | `/home/pi5/Pictures` |
+| `folder` | 사진 폴더 경로 | `/home/pi/Pictures` |
 | `show_sec` | 사진 1장 표시 시간 (초) | `10` |
 | `rest_sec` | 사진 사이 내장 테마 표시 시간 (0=연속 재생) | `0` |
 | `shuffle` | 랜덤 순서 재생 | `false` |
@@ -295,7 +295,7 @@ bash install.sh
 | Key | Description | Default |
 |-----|-------------|---------|
 | `device_ip` | GeekMagic device IP address | — |
-| `city` | City name for weather (OpenWeatherMap format) | `Pyeongtaek-si` |
+| `city` | City name for weather (OpenWeatherMap format) | `Seoul` |
 | `api_key` | OpenWeatherMap API Key | `""` (uses dummy data if empty) |
 | `temp_unit` | Temperature unit: `metric` (°C) or `imperial` (°F) | `metric` |
 | `time_format` | Clock format: `24h` or `12h` | `24h` |
@@ -318,7 +318,7 @@ bash install.sh
 | Key | Description | Default |
 |-----|-------------|---------|
 | `enabled` | Enable slideshow | `false` |
-| `folder` | Path to photo folder | `/home/pi5/Pictures` |
+| `folder` | Path to photo folder | `/home/pi/Pictures` |
 | `show_sec` | Duration to show each photo (seconds) | `10` |
 | `rest_sec` | Built-in theme display time between photos (0 = continuous) | `0` |
 | `shuffle` | Randomize photo order | `false` |

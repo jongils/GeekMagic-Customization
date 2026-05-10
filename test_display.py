@@ -7,7 +7,7 @@ import uuid
 import sys
 import os
 
-DEVICE_IP   = "192.168.219.119"
+DEVICE_IP   = "192.168.x.x"   # config.json의 device_ip로 교체하세요
 FILENAME    = "test_text.jpg"
 OUTPUT_PATH = "/tmp/test_text.jpg"
 

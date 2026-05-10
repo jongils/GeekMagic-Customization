@@ -10,13 +10,13 @@
 | 장치 | 스펙 | 역할 |
 |------|------|------|
 | GeekMagic SmallTV Ultra | ESP8266 (ESP-12F), TFT LCD 240×240, Flash 4MB | 표시 장치 |
-| Raspberry Pi 5 | Python 3.13, IP: 192.168.219.116 | 이미지 생성 및 Push 서버 |
+| Raspberry Pi 5 | Python 3.13 | 이미지 생성 및 Push 서버 |
 
 ### 장치 식별 과정
 - 보라색 PCB에 ESP-12F 모듈 + AMS1117 레귤레이터 탑재 확인
 - GeekMagic 공식 GitHub 분석 → **Ultra = ESP8266**, PRO = ESP32
 - 펌웨어 버전: `SmallTV-Ultra / Ultra-V9.0.41`
-- 장치 IP: `192.168.219.119`
+- 장치 IP: 로컬 네트워크 내 할당 IP (`config.json`의 `device_ip`에 설정)
 
 ---
 
@@ -59,7 +59,7 @@ venv/bin/pip install pillow requests flask schedule pytz psutil
 
 ### 3-3. install.sh 경로 하드코딩 문제
 - `install.sh`에 `PROJECT_DIR="$HOME/weather-clock"` 하드코딩
-- 실제 경로: `/home/pi5/Documents/GeekMagic/weather-clock`
+- 실제 경로: 저장소 클론 위치 기준 자동 감지
 - systemd 서비스가 `activating` 상태에서 반복 실패
 - **해결**: `PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` 로 자동 감지
 
@@ -69,10 +69,10 @@ venv/bin/pip install pillow requests flask schedule pytz psutil
 
 ### 4-1. 기본 API 확인
 ```
-GET  http://192.168.219.119/                       → 200 (웹 콘솔)
-POST http://192.168.219.119/doUpload?dir=/image/   → 이미지 업로드
-GET  http://192.168.219.119/set?img=/image//파일명  → 화면 표시
-GET  http://192.168.219.119/update                 → OTA 펌웨어 업데이트 페이지
+GET  http://192.168.x.x/                       → 200 (웹 콘솔)
+POST http://192.168.x.x/doUpload?dir=/image/   → 이미지 업로드
+GET  http://192.168.x.x/set?img=/image//파일명  → 화면 표시
+GET  http://192.168.x.x/update                 → OTA 펌웨어 업데이트 페이지
 ```
 
 ### 4-2. requests 라이브러리 오류
@@ -352,7 +352,7 @@ class WeatherClockScheduler:
 | CPU 모니터 표시 | ✅ 완료 | 내장 테마 ↔ CPU 이미지 교대 정상 동작 |
 | main.py + cpu_monitor.py 충돌 | ✅ 해결 | 스케줄러 통합 |
 | 동적 config 반영 | ✅ 완료 | 웹 UI 저장 시 서비스 재시작 없이 다음 사이클 반영 |
-| 웹 설정 UI | ✅ 운영 중 | http://192.168.219.116:8080 |
+| 웹 설정 UI | ✅ 운영 중 | http://[Pi IP]:8080 |
 | systemd 서비스 | ✅ 운영 중 | weather-clock.service 자동 시작 |
 | 날씨 실데이터 | ⏸ 대기 | OpenWeatherMap API Key 발급 후 적용 필요 |
 

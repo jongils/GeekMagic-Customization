@@ -109,7 +109,7 @@ def generate_weather_clock(weather: dict, config: dict) -> Image.Image:
     # 헤더 배경 (라운드 없이 심플)
     draw.rectangle([0, 0, 239, 36], fill=C["header_bg"])
 
-    city_name = weather.get("city", config.get("city", "Pyeongtaek-si"))
+    city_name = weather.get("city", config.get("city", "Seoul"))
     draw.text((10, 10), city_name, fill=C["header_text"], font=font_city)
 
     # 날씨 아이콘 + 설명 (헤더 우측)

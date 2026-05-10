@@ -5,7 +5,7 @@
 from PIL import Image, ImageDraw, ImageFont
 import http.client, uuid, time, os, psutil, datetime, pytz
 
-DEVICE_IP   = "192.168.219.119"
+DEVICE_IP   = "192.168.x.x"   # config.json의 device_ip로 교체하세요
 FILENAME    = "weather_clock.jpg"   # 장치가 실제 사용하는 파일명
 OUTPUT_PATH = "/tmp/weather_clock.jpg"
 SHOW_SEC    = 10

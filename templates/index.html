@@ -172,7 +172,7 @@
       <h2>🌍 날씨 설정</h2>
       <div class="field">
         <label>도시명 (OpenWeatherMap 기준)</label>
-        <input type="text" name="city" value="{{ config.city }}" placeholder="Pyeongtaek-si">
+        <input type="text" name="city" value="{{ config.city }}" placeholder="Seoul">
       </div>
       <div class="field">
         <label>OpenWeatherMap API Key</label>
@@ -339,8 +339,8 @@
         <div class="field" style="margin-top:12px">
           <label>사진 폴더 경로</label>
           <input type="text" name="slideshow_folder" id="slideshow_folder"
-            value="{{ config.slideshow.folder if config.slideshow else '/home/pi5/Pictures' }}"
-            placeholder="/home/pi5/Pictures"
+            value="{{ config.slideshow.folder if config.slideshow else '/home/pi/Pictures' }}"
+            placeholder="/home/pi/Pictures"
             onchange="fetchSlideshowInfo()">
           <p class="ip-hint" id="slideshow-count">— 폴더를 입력하면 이미지 수를 확인합니다</p>
         </div>
@@ -518,7 +518,7 @@
   </form>
 
   <p style="text-align:center; color:#2a3360; font-size:.75rem; margin-top:24px; padding-bottom:20px;">
-    Weather Clock • Raspberry Pi 5 • 192.168.219.116
+    Weather Clock • Raspberry Pi
   </p>
 
 </div>

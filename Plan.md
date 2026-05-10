@@ -39,7 +39,7 @@ def resize_for_display(image_path: str, output_path: str) -> str
 ```json
 "slideshow": {
   "enabled": false,
-  "folder": "/home/pi5/Pictures",
+  "folder": "/home/pi/Pictures",
   "show_sec": 10,
   "rest_sec": 0,
   "shuffle": false,
@@ -50,7 +50,7 @@ def resize_for_display(image_path: str, output_path: str) -> str
 | 항목 | 설명 | 기본값 |
 |------|------|--------|
 | `enabled` | 슬라이드쇼 활성화 | `false` |
-| `folder` | 사진 폴더 경로 | `/home/pi5/Pictures` |
+| `folder` | 사진 폴더 경로 | `/home/pi/Pictures` |
 | `show_sec` | 사진 1장 표시 시간 (초) | `10` |
 | `rest_sec` | 사진 사이 GeekMagic 테마 표시 시간 (0=연속 재생) | `0` |
 | `shuffle` | 랜덤 순서 재생 | `false` |
@@ -225,7 +225,7 @@ class PhotoWatcher:
 ```json
 "photo_watcher": {
   "enabled": false,
-  "watch_folder": "/home/pi5/.openclaw/media/inbound",
+  "watch_folder": "/home/pi/.openclaw/media/inbound",
   "show_sec": 30,
   "poll_sec": 5,
   "restore_theme": 1

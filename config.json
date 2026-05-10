@@ -1,6 +1,6 @@
 {
-  "device_ip": "192.168.219.119",
-  "city": "Pyeongtaek-si",
+  "device_ip": "192.168.x.x",
+  "city": "Seoul",
   "api_key": "",
   "temp_unit": "metric",
   "time_format": "12h",
@@ -21,8 +21,8 @@
     "restore_theme": 1
   },
   "slideshow": {
-    "enabled": true,
-    "folder": "/home/pi5/Documents",
+    "enabled": false,
+    "folder": "/home/pi/Pictures",
     "show_sec": 5,
     "rest_sec": 20,
     "shuffle": true,

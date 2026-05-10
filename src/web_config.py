@@ -39,8 +39,8 @@ def save_config(data: dict):
 
 def get_default_config() -> dict:
     return {
-        "device_ip":            "192.168.219.119",
-        "city":                 "Pyeongtaek-si",
+        "device_ip":            "192.168.x.x",
+        "city":                 "Seoul",
         "api_key":              "",
         "temp_unit":            "metric",
         "time_format":          "24h",
@@ -61,7 +61,7 @@ def get_default_config() -> dict:
         },
         "slideshow": {
             "enabled":       False,
-            "folder":        "/home/pi5/Pictures",
+            "folder":        "/home/pi/Pictures",
             "show_sec":      10,
             "rest_sec":      0,
             "shuffle":       False,
@@ -117,7 +117,7 @@ def save_config_route():
         if "slideshow" not in config:
             config["slideshow"] = {}
         config["slideshow"]["enabled"]       = data.get("slideshow_enabled") == "on"
-        config["slideshow"]["folder"]        = data.get("slideshow_folder", "/home/pi5/Pictures").strip()
+        config["slideshow"]["folder"]        = data.get("slideshow_folder", "/home/pi/Pictures").strip()
         config["slideshow"]["show_sec"]      = int(data.get("slideshow_show_sec",  10))
         config["slideshow"]["rest_sec"]      = int(data.get("slideshow_rest_sec",   0))
         config["slideshow"]["shuffle"]       = data.get("slideshow_shuffle") == "on"
@@ -222,7 +222,7 @@ def slideshow_info():
     config = load_config()
     folder = request.args.get(
         "folder",
-        config.get("slideshow", {}).get("folder", "/home/pi5/Pictures")
+        config.get("slideshow", {}).get("folder", "/home/pi/Pictures")
     )
     try:
         from src.slideshow import count_images

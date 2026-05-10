@@ -236,7 +236,7 @@ class WeatherClockScheduler:
 
             # ── 매 순환 시 config 재로드 ──────────────────────
             cfg           = self.config.get("slideshow", {})
-            folder        = cfg.get("folder", "/home/pi5/Pictures")
+            folder        = cfg.get("folder", "/home/pi/Pictures")
             show_sec      = max(int(cfg.get("show_sec",  10)), 1)
             rest_sec      = max(int(cfg.get("rest_sec",   0)), 0)
             shuffle       = bool(cfg.get("shuffle", False))

@@ -16,7 +16,7 @@ UPLOAD_PATH     = f"/image//{UPLOAD_FILENAME}"
 
 class GeekMagicClient:
     def __init__(self, config: dict):
-        self.device_ip = config.get("device_ip", "192.168.219.119")
+        self.device_ip = config.get("device_ip", "192.168.x.x")
         self.timeout   = config.get("push_timeout_sec", 10)
         self.retries   = config.get("push_retries", 3)
 

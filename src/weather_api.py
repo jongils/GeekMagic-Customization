@@ -59,7 +59,7 @@ WEATHER_DESC_KO = {
 class WeatherAPI:
     def __init__(self, config: dict):
         self.api_key = config.get("api_key", "")
-        self.city = config.get("city", "Pyeongtaek-si")
+        self.city = config.get("city", "Seoul")
         self.units = config.get("temp_unit", "metric")  # metric=섭씨
         self.cache_file = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "cache", "weather.json"

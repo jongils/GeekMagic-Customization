@@ -29,8 +29,8 @@ sys.path.insert(0, BASE_DIR)
 
 # ── 기본 설정 ─────────────────────────────────────────────────
 DEFAULT_CONFIG = {
-    "device_ip":            "192.168.219.119",
-    "city":                 "Pyeongtaek-si",
+    "device_ip":            "192.168.x.x",
+    "city":                 "Seoul",
     "api_key":              "",
     "temp_unit":            "metric",
     "time_format":          "24h",
@@ -108,7 +108,7 @@ def main():
 
     # ── Flask 웹 서버 시작 ────────────────────────────────────
     port = config.get("web_port", 8080)
-    logger.info(f"웹 설정 UI: http://192.168.219.116:{port}")
+    logger.info(f"웹 설정 UI: http://0.0.0.0:{port}")
     flask_app.run(
         host="0.0.0.0",
         port=port,
