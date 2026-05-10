@@ -149,8 +149,15 @@ venv/bin/python3 main.py
 ```
 웹 설정 UI: `http://[라즈베리파이 IP]:8080`
 
-모든 기능(슬라이드쇼, CPU 모니터, 콘솔 출력)은 웹 UI 또는 `config.json`으로 켜고 끌 수 있으며,  
-설정 값(숫자·문자열) 변경은 서비스 재시작 없이 다음 사이클부터 자동 반영됩니다.
+모든 기능(슬라이드쇼, CPU 모니터, 콘솔 출력)은 웹 UI 또는 `config.json`으로 켜고 끌 수 있습니다.
+
+| 동작 | 반영 시점 |
+|------|-----------|
+| 기능 **켜기** (토글 ON) | 설정 저장 즉시 스레드 시작 |
+| 기능 **끄기** (토글 OFF) | 최대 1초 이내 스레드 종료 + 화면 자동 복원 |
+| 숫자·문자열 설정 변경 | 다음 사이클 시작 시 자동 반영 (재시작 불필요) |
+
+기능을 끄면 해당 스레드가 즉시 종료되고, `restore_theme`에 설정된 내장 테마(또는 날씨+시계 화면)로 장치 화면이 자동으로 복원됩니다.
 
 > **주의 1**: `main.py`가 실행 중일 때 `cpu_monitor.py`를 별도로 실행하면 두 프로세스가 장치 테마를 서로 덮어써 충돌이 발생합니다. CPU 모니터는 반드시 `main.py` 내 통합 스케줄러를 사용하세요.
 
@@ -337,8 +344,15 @@ venv/bin/python3 main.py
 ```
 Web config UI: `http://[raspberry-pi-ip]:8080`
 
-All features (slideshow, CPU monitor, console output) can be toggled via the web UI or `config.json`.  
-Config value changes (numbers, strings) are picked up automatically on the next cycle without restarting.
+All features (slideshow, CPU monitor, console output) can be toggled via the web UI or `config.json`.
+
+| Action | When it takes effect |
+|--------|---------------------|
+| **Enable** a feature (toggle ON) | Thread starts immediately on save |
+| **Disable** a feature (toggle OFF) | Thread stops within 1 second + display auto-restored |
+| Change numeric/string settings | Applied at the start of the next cycle (no restart needed) |
+
+When a feature is disabled, its thread exits immediately and the device display is automatically restored to the configured `restore_theme` (built-in theme or custom weather screen).
 
 > **Warning 1**: Running `cpu_monitor.py` while `main.py` is active causes a race condition — both processes fight over the device theme. Use the integrated scheduler in `main.py` instead.
 
