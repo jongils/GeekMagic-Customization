@@ -11,12 +11,21 @@
 
 Raspberry Pi 5에서 날씨 정보와 시계를 담은 240×240 이미지를 생성하여 GeekMagic SmallTV Ultra 장치에 실시간으로 푸시하는 앱입니다. 별도의 펌웨어 수정 없이 장치 내장 HTTP API만을 사용합니다.
 
-### 화면 구성
+### 화면 모드
 
 | 모드 | 설명 |
 |------|------|
+| 날씨+시계 (커스텀) | Pillow로 생성한 날씨·시계 이미지를 장치에 Push |
 | GeekMagic 내장 테마 | 장치 자체 날씨/시계 화면 (theme 1~7 선택 가능) |
-| CPU 모니터 | CPU 사용률, 메모리, 디스크, CPU 온도, 업타임 |
+| CPU 모니터 | CPU 사용률, 메모리, 디스크, CPU 온도, 업타임 표시 |
+| 슬라이드쇼 | 로컬 폴더의 사진을 순서대로 반복 표시 |
+| 콘솔 출력 | 셸 명령어 실행 결과를 실시간으로 표시 |
+
+### 표시 우선순위
+
+```
+슬라이드쇼 > CPU 모니터 ≈ 콘솔 출력 > 날씨+시계
+```
 
 ### 요구사항
 
@@ -65,9 +74,28 @@ bash install.sh
     "show_sec": 10,
     "rest_sec": 50,
     "restore_theme": 1
+  },
+  "slideshow": {
+    "enabled": false,
+    "folder": "/home/pi5/Pictures",
+    "show_sec": 10,
+    "rest_sec": 0,
+    "shuffle": false,
+    "restore_theme": 1
+  },
+  "console": {
+    "enabled": false,
+    "command": "vcgencmd measure_temp && free -h && df -h /",
+    "label": "",
+    "refresh_sec": 5,
+    "show_sec": 30,
+    "rest_sec": 0,
+    "restore_theme": 1
   }
 }
 ```
+
+#### 기본 설정
 
 | 항목 | 설명 | 기본값 |
 |------|------|--------|
@@ -80,10 +108,38 @@ bash install.sh
 | `weather_interval_min` | 날씨 API 호출 주기 (분) | `10` |
 | `web_port` | 웹 설정 UI 포트 | `8080` |
 | `night_mode.enabled` | 야간 모드 (지정 시간대 Push 중단) | `false` |
-| `cpu_monitor.enabled` | CPU 모니터 교대 표시 활성화 | `false` |
-| `cpu_monitor.show_sec` | CPU 정보 표시 시간 (초) | `10` |
-| `cpu_monitor.rest_sec` | GeekMagic 내장 테마 표시 시간 (초) | `50` |
-| `cpu_monitor.restore_theme` | CPU 종료 후 복원할 내장 테마 번호 (0=날씨 커스텀) | `1` |
+
+#### CPU 모니터 (`cpu_monitor`)
+
+| 항목 | 설명 | 기본값 |
+|------|------|--------|
+| `enabled` | CPU 모니터 교대 표시 활성화 | `false` |
+| `show_sec` | CPU 정보 표시 시간 (초) | `10` |
+| `rest_sec` | GeekMagic 내장 테마 표시 시간 (초) | `50` |
+| `restore_theme` | CPU 종료 후 복원할 내장 테마 번호 (0=날씨 커스텀) | `1` |
+
+#### 슬라이드쇼 (`slideshow`)
+
+| 항목 | 설명 | 기본값 |
+|------|------|--------|
+| `enabled` | 슬라이드쇼 활성화 | `false` |
+| `folder` | 사진 폴더 경로 | `/home/pi5/Pictures` |
+| `show_sec` | 사진 1장 표시 시간 (초) | `10` |
+| `rest_sec` | 사진 사이 내장 테마 표시 시간 (0=연속 재생) | `0` |
+| `shuffle` | 랜덤 순서 재생 | `false` |
+| `restore_theme` | 사진 사이 복원할 내장 테마 번호 | `1` |
+
+#### 콘솔 출력 (`console`)
+
+| 항목 | 설명 | 기본값 |
+|------|------|--------|
+| `enabled` | 콘솔 출력 표시 활성화 | `false` |
+| `command` | 실행할 셸 명령어 | Pi 상태 조회 명령 |
+| `label` | 타이틀 바 텍스트 (비워두면 명령어 앞부분 표시) | `""` |
+| `refresh_sec` | 연속 모드: 명령 재실행 주기 (초) | `5` |
+| `show_sec` | 교대 모드: 콘솔 표시 시간 (초) | `30` |
+| `rest_sec` | 0=연속 표시, N=교대 표시 (내장 테마 표시 시간) | `0` |
+| `restore_theme` | 교대 모드 종료 후 복원할 내장 테마 번호 | `1` |
 
 ### 실행
 
@@ -93,8 +149,8 @@ venv/bin/python3 main.py
 ```
 웹 설정 UI: `http://[라즈베리파이 IP]:8080`
 
-CPU 모니터 교대 표시는 웹 UI 또는 `config.json`의 `cpu_monitor.enabled`로 켜고 끌 수 있습니다.  
-설정 변경은 서비스 재시작 없이 다음 사이클부터 자동 반영됩니다.
+모든 기능(슬라이드쇼, CPU 모니터, 콘솔 출력)은 웹 UI 또는 `config.json`으로 켜고 끌 수 있으며,  
+설정 저장 시 서비스 재시작 없이 즉시 반영됩니다.
 
 > **주의**: `main.py`가 실행 중일 때 `cpu_monitor.py`를 별도로 실행하면 두 프로세스가 장치 테마를 서로 덮어써 충돌이 발생합니다. CPU 모니터는 반드시 `main.py` 내 통합 스케줄러를 사용하세요.
 
@@ -107,7 +163,7 @@ CPU 정보 표시 → 장치 내장 테마 복원 → 반복 / 종료: `Ctrl+C`
 ### 프로젝트 구조
 
 ```
-├── main.py                  # 메인 진입점 (날씨+시계 + CPU 모니터 통합)
+├── main.py                  # 메인 진입점 (통합 스케줄러)
 ├── cpu_monitor.py           # CPU 모니터 standalone (main.py 미실행 시 전용)
 ├── config.json              # 설정 파일
 ├── requirements.txt
@@ -115,13 +171,19 @@ CPU 정보 표시 → 장치 내장 테마 복원 → 반복 / 종료: `Ctrl+C`
 ├── src/
 │   ├── weather_api.py       # OpenWeatherMap API 연동
 │   ├── image_generator.py   # Pillow 날씨+시계 이미지 생성
-│   ├── cpu_image.py         # Pillow CPU 모니터 이미지 생성 (공용 모듈)
+│   ├── cpu_image.py         # Pillow CPU 모니터 이미지 생성
+│   ├── slideshow.py         # 슬라이드쇼 이미지 처리 (리사이즈·EXIF·캐시)
+│   ├── console_image.py     # 명령어 출력 → 240×240 이미지 렌더링
 │   ├── push_client.py       # GeekMagic HTTP API 클라이언트
-│   ├── scheduler.py         # 스케줄러 (날씨+CPU 스레드 조율)
+│   ├── scheduler.py         # 멀티스레드 스케줄러 (표시 우선순위 조율)
 │   └── web_config.py        # Flask 웹 설정 서버
 ├── templates/
 │   └── index.html           # 웹 설정 UI
-└── cache/                   # 날씨 JSON 캐시 + 이미지 캐시
+└── cache/
+    ├── current.jpg          # 현재 날씨+시계 이미지
+    ├── cpu_current.jpg      # 현재 CPU 모니터 이미지
+    ├── slideshow/           # 슬라이드쇼 처리 이미지 캐시
+    └── console/             # 콘솔 출력 이미지 캐시
 ```
 
 ### 아키텍처
@@ -129,10 +191,14 @@ CPU 정보 표시 → 장치 내장 테마 복원 → 반복 / 종료: `Ctrl+C`
 ```
 main.py
   ├── [scheduler thread]    날씨+시계 이미지 → Push (매 N초)
-  │     └─ 내장 테마 모드 또는 CPU 표시 중이면 자동 skip
-  ├── [cpu-monitor thread]  rest_sec 대기 → CPU 이미지 Push → show_sec 표시 → 테마 복원 → 반복
-  │     └─ threading.Lock으로 날씨 Push와 충돌 방지
+  │     └─ 슬라이드쇼·콘솔·CPU 표시 중이면 자동 skip
+  ├── [cpu-monitor thread]  내장 테마(rest_sec) → CPU Push(show_sec) → 테마 복원 → 반복
+  ├── [slideshow thread]    사진 리사이즈 → Push(show_sec) → [테마(rest_sec)] → 반복
+  ├── [console thread]      명령 실행 → 이미지 Push → 대기 → 반복
+  │     연속 모드: refresh_sec마다 갱신 / 교대 모드: 내장 테마 → 콘솔 → 반복
   └── [Flask thread]        웹 설정 UI (포트 8080)
+
+모든 Push는 threading.Lock(_push_lock)으로 동시 실행 방지
 ```
 
 ### 장치 HTTP API
@@ -147,7 +213,19 @@ main.py
 | `GET /v.json` | 펌웨어 버전 조회 |
 
 > **주의 1**: `requests` 라이브러리는 ESP8266의 `Content-Length` 중복 헤더 버그로 사용 불가. `http.client`를 직접 사용합니다.  
-> **주의 2**: `/set?theme=3&img=...` 조합 쿼리는 ESP8266 펌웨어가 `img=`를 무시합니다. 테마 전환과 이미지 지정은 반드시 별도 요청으로 분리해야 합니다.
+> **주의 2**: `/set?theme=3&img=...` 조합 쿼리는 ESP8266 펌웨어가 `img=`를 무시합니다. 이미지 업로드 → 테마 전환 → 이미지 지정을 반드시 **별도 3단계 요청**으로 분리해야 합니다.
+
+### 웹 설정 UI 엔드포인트
+
+| 경로 | 설명 |
+|------|------|
+| `GET /` | 설정 메인 페이지 |
+| `POST /config` | 설정 저장 |
+| `GET /status` | 장치 연결 상태 + 현재 시각 JSON |
+| `GET /push-now` | 날씨+시계 화면 즉시 업데이트 |
+| `GET /preview` | 현재 날씨+시계 이미지 미리보기 |
+| `GET /slideshow-info?folder=` | 지정 폴더의 이미지 수 반환 |
+| `GET /console-preview?command=&label=` | 명령어 실행 결과 이미지 즉시 생성 반환 |
 
 ---
 
@@ -155,14 +233,23 @@ main.py
 
 ### Overview
 
-This project pushes real-time weather and clock information (or CPU stats) to a GeekMagic SmallTV Ultra display (240×240) from a Raspberry Pi 5. It uses only the device's built-in HTTP API — no firmware modification required.
+This project pushes real-time weather, clock, CPU stats, slideshows, and console output as 240×240 images to a GeekMagic SmallTV Ultra display from a Raspberry Pi 5. It uses only the device's built-in HTTP API — no firmware modification required.
 
 ### Display Modes
 
 | Mode | Content |
 |------|---------|
+| Weather + Clock (custom) | Pillow-rendered weather and clock image pushed to device |
 | GeekMagic Built-in Theme | Device's own weather/clock display (selectable theme 1–7) |
 | CPU Monitor | CPU usage, memory, disk, temperature, uptime |
+| Slideshow | Cycles through photos from a local folder |
+| Console Output | Renders shell command output as a live display |
+
+### Display Priority
+
+```
+Slideshow > CPU Monitor ≈ Console > Weather + Clock
+```
 
 ### Requirements
 
@@ -191,29 +278,7 @@ bash install.sh
 
 ### Configuration (`config.json`)
 
-```json
-{
-  "device_ip": "192.168.x.x",
-  "city": "Seoul",
-  "api_key": "YOUR_OPENWEATHERMAP_API_KEY",
-  "temp_unit": "metric",
-  "time_format": "24h",
-  "refresh_interval_sec": 60,
-  "weather_interval_min": 10,
-  "web_port": 8080,
-  "night_mode": {
-    "enabled": false,
-    "start": "23:00",
-    "end": "07:00"
-  },
-  "cpu_monitor": {
-    "enabled": false,
-    "show_sec": 10,
-    "rest_sec": 50,
-    "restore_theme": 1
-  }
-}
-```
+#### Core Settings
 
 | Key | Description | Default |
 |-----|-------------|---------|
@@ -226,10 +291,38 @@ bash install.sh
 | `weather_interval_min` | Weather API fetch interval (minutes) | `10` |
 | `web_port` | Web config UI port | `8080` |
 | `night_mode.enabled` | Suppress pushes during specified hours | `false` |
-| `cpu_monitor.enabled` | Enable alternating CPU monitor display | `false` |
-| `cpu_monitor.show_sec` | Duration to show CPU screen (seconds) | `10` |
-| `cpu_monitor.rest_sec` | Duration to show GeekMagic built-in theme (seconds) | `50` |
-| `cpu_monitor.restore_theme` | Built-in theme number to restore after CPU (0 = custom weather) | `1` |
+
+#### CPU Monitor (`cpu_monitor`)
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `enabled` | Enable alternating CPU monitor display | `false` |
+| `show_sec` | Duration to show CPU screen (seconds) | `10` |
+| `rest_sec` | Duration to show GeekMagic built-in theme (seconds) | `50` |
+| `restore_theme` | Built-in theme number to restore after CPU (0 = custom weather) | `1` |
+
+#### Slideshow (`slideshow`)
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `enabled` | Enable slideshow | `false` |
+| `folder` | Path to photo folder | `/home/pi5/Pictures` |
+| `show_sec` | Duration to show each photo (seconds) | `10` |
+| `rest_sec` | Built-in theme display time between photos (0 = continuous) | `0` |
+| `shuffle` | Randomize photo order | `false` |
+| `restore_theme` | Built-in theme number to show between photos | `1` |
+
+#### Console Output (`console`)
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `enabled` | Enable console output display | `false` |
+| `command` | Shell command to execute | Pi status command |
+| `label` | Title bar text (omit to show command prefix) | `""` |
+| `refresh_sec` | Continuous mode: re-run interval (seconds) | `5` |
+| `show_sec` | Alternating mode: console display duration (seconds) | `30` |
+| `rest_sec` | 0 = continuous display; N = alternating (theme duration in seconds) | `0` |
+| `restore_theme` | Built-in theme number to restore after console (alternating mode) | `1` |
 
 ### Usage
 
@@ -239,8 +332,8 @@ venv/bin/python3 main.py
 ```
 Web config UI: `http://[raspberry-pi-ip]:8080`
 
-Enable CPU monitor alternation via the web UI toggle or `config.json`.  
-Config changes apply from the next cycle without restarting the service.
+All features (slideshow, CPU monitor, console output) can be toggled via the web UI or `config.json`.  
+Config changes apply immediately without restarting the service.
 
 > **Warning**: Running `cpu_monitor.py` while `main.py` is active causes a race condition — both processes fight over the device theme. Use the integrated scheduler in `main.py` instead.
 
@@ -253,7 +346,7 @@ Cycles: CPU stats → built-in theme → repeat / Stop with `Ctrl+C`
 ### Project Structure
 
 ```
-├── main.py                  # Entry point (weather clock + CPU monitor integrated)
+├── main.py                  # Entry point (integrated multi-thread scheduler)
 ├── cpu_monitor.py           # Standalone CPU monitor (use only without main.py)
 ├── config.json              # Configuration file
 ├── requirements.txt
@@ -261,13 +354,19 @@ Cycles: CPU stats → built-in theme → repeat / Stop with `Ctrl+C`
 ├── src/
 │   ├── weather_api.py       # OpenWeatherMap API integration
 │   ├── image_generator.py   # Pillow weather+clock image renderer
-│   ├── cpu_image.py         # Pillow CPU monitor image renderer (shared module)
+│   ├── cpu_image.py         # Pillow CPU monitor image renderer
+│   ├── slideshow.py         # Slideshow image processing (resize, EXIF, cache)
+│   ├── console_image.py     # Shell command output → 240×240 image renderer
 │   ├── push_client.py       # GeekMagic HTTP API client
-│   ├── scheduler.py         # Scheduler (weather+CPU thread coordination)
+│   ├── scheduler.py         # Multi-thread scheduler (display priority coordination)
 │   └── web_config.py        # Flask web config server
 ├── templates/
 │   └── index.html           # Web config UI
-└── cache/                   # Weather JSON cache + current image
+└── cache/
+    ├── current.jpg          # Current weather+clock image
+    ├── cpu_current.jpg      # Current CPU monitor image
+    ├── slideshow/           # Processed slideshow image cache
+    └── console/             # Console output image cache
 ```
 
 ### Architecture
@@ -275,10 +374,14 @@ Cycles: CPU stats → built-in theme → repeat / Stop with `Ctrl+C`
 ```
 main.py
   ├── [scheduler thread]    Weather image → Push every N seconds
-  │     └─ Skipped when in built-in theme mode or CPU is displaying
-  ├── [cpu-monitor thread]  Wait rest_sec → Push CPU image → Wait show_sec → Restore theme → repeat
-  │     └─ threading.Lock prevents concurrent push with weather thread
+  │     └─ Skipped when slideshow/console/CPU is displaying
+  ├── [cpu-monitor thread]  Built-in theme(rest_sec) → CPU Push(show_sec) → restore → repeat
+  ├── [slideshow thread]    Resize photo → Push(show_sec) → [theme(rest_sec)] → repeat
+  ├── [console thread]      Run command → render image → Push → wait → repeat
+  │     Continuous: refresh every N sec / Alternating: theme → console → repeat
   └── [Flask thread]        Web config UI (port 8080)
+
+All pushes are serialized via threading.Lock (_push_lock)
 ```
 
 ### Key Device API Endpoints
@@ -293,7 +396,7 @@ main.py
 | `GET /v.json` | Query firmware version |
 
 > **Note 1**: The `requests` library cannot be used due to an ESP8266 firmware bug that sends duplicate `Content-Length` headers. This project uses `http.client` directly.  
-> **Note 2**: `/set?theme=3&img=...` combined query — the ESP8266 firmware ignores the `img=` parameter. Always send theme switch and image selection as **separate requests**.
+> **Note 2**: `/set?theme=3&img=...` combined query — the ESP8266 firmware silently ignores the `img=` parameter. Always send as **three separate requests**: upload → `set?theme=3` → `set?img=`.
 
 ### Known Limitations
 
@@ -307,4 +410,4 @@ MIT
 
 ---
 
-*Last updated: 2026-05-09*
+*Last updated: 2026-05-10*
