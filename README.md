@@ -45,12 +45,24 @@ cd GeekMagic-WeatherClock
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 
-# 3. 설정 파일 편집
+# 3. 설정 파일 편집 (필수 — 아래 항목 참고)
 nano config.json
 
 # 4. (선택) systemd 서비스 등록 — 부팅 시 자동 시작
 bash install.sh
 ```
+
+> **⚠️ 클론 후 반드시 `config.json`을 수정하세요.**  
+> 저장소의 기본값은 플레이스홀더이며, 그대로 실행하면 장치에 연결되지 않습니다.
+
+| 항목 | 기본값 | 수정 내용 |
+|------|--------|-----------|
+| `device_ip` | `192.168.x.x` | GeekMagic 장치의 실제 IP 주소로 변경 |
+| `city` | `Seoul` | 날씨를 조회할 도시명으로 변경 (OpenWeatherMap 기준) |
+| `api_key` | `""` | OpenWeatherMap API Key 입력 (없으면 더미 데이터로 동작) |
+| `slideshow.folder` | `/home/pi/Pictures` | 슬라이드쇼로 표시할 사진 폴더 경로로 변경 |
+
+장치 IP는 공유기 관리 페이지 또는 `arp -a` 명령으로 확인할 수 있습니다.
 
 ### 설정 (`config.json`)
 
@@ -281,12 +293,24 @@ cd GeekMagic-WeatherClock
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 
-# 3. Edit configuration
+# 3. Edit configuration (required — see table below)
 nano config.json
 
 # 4. (Optional) Register as systemd service for auto-start on boot
 bash install.sh
 ```
+
+> **⚠️ You must edit `config.json` after cloning.**  
+> The repository ships with placeholder values — the service will not connect to your device until these are set.
+
+| Key | Default | What to set |
+|-----|---------|-------------|
+| `device_ip` | `192.168.x.x` | Your GeekMagic device's actual IP address |
+| `city` | `Seoul` | City name for weather lookup (OpenWeatherMap format) |
+| `api_key` | `""` | Your OpenWeatherMap API Key (optional; falls back to dummy data) |
+| `slideshow.folder` | `/home/pi/Pictures` | Path to your photo folder for slideshow |
+
+To find your device IP, check your router's admin page or run `arp -a`.
 
 ### Configuration (`config.json`)
 
