@@ -23,12 +23,14 @@ class WeatherClockScheduler:
         self.image_path   = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "cache", "current.jpg"
         )
-        self._weather_cache = None
-        self._running     = False
-        self._thread      = None
-        self._cpu_thread  = None
-        self._push_lock   = threading.Lock()   # 날씨/CPU 동시 Push 방지
-        self._showing_cpu = False              # CPU 표시 중 플래그
+        self._weather_cache       = None
+        self._running             = False
+        self._thread              = None
+        self._cpu_thread          = None
+        self._slideshow_thread    = None
+        self._push_lock           = threading.Lock()  # Push 동시 실행 방지
+        self._showing_cpu         = False             # CPU 표시 중 플래그
+        self._showing_slideshow   = False             # 슬라이드쇼 표시 중 플래그
 
     # ── 야간 모드 ─────────────────────────────────────────────
     def _is_night_mode(self) -> bool:
@@ -56,14 +58,17 @@ class WeatherClockScheduler:
 
     # ── 날씨 화면 Push ────────────────────────────────────────
     def _update_display(self):
-        """날씨+시계 이미지 생성 → 장치 Push
-        restore_theme != 0 이면 내장 테마 모드이므로 날씨 Push 불필요, skip.
+        """날씨+시계 이미지 생성 → 장치 Push.
+        슬라이드쇼·내장 테마 모드·CPU 표시 중에는 skip.
         """
+        if self.config.get("slideshow", {}).get("enabled", False):
+            logger.debug("슬라이드쇼 모드 — 날씨 Push 건너뜀")
+            return
         if self._restore_theme() != 0:
             logger.debug("내장 테마 모드 — 날씨 Push 건너뜀")
             return
-        if self._showing_cpu:
-            logger.debug("CPU 모니터 표시 중 — 날씨 Push 건너뜀")
+        if self._showing_cpu or self._showing_slideshow:
+            logger.debug("다른 콘텐츠 표시 중 — 날씨 Push 건너뜀")
             return
         if self._is_night_mode():
             logger.debug("야간 모드 — Push 건너뜀")
@@ -116,6 +121,11 @@ class WeatherClockScheduler:
             self.push_client.set_theme(restore_theme)
 
         while self._running:
+            # 슬라이드쇼가 활성화되어 있으면 CPU 모니터 양보
+            if self.config.get("slideshow", {}).get("enabled", False):
+                time.sleep(5)
+                continue
+
             # ── 매 사이클 시작 시 config 재로드 ──────────────
             cfg       = self.config.get("cpu_monitor", {})
             show_sec  = max(int(cfg.get("show_sec",  10)), 1)
@@ -175,6 +185,100 @@ class WeatherClockScheduler:
                 logger.info("CPU 종료 → 날씨 화면 복원")
                 self._update_display()
 
+    # ── 슬라이드쇼 스레드 ────────────────────────────────────
+    def _slideshow_loop(self):
+        """로컬 폴더 슬라이드쇼 스레드.
+
+        rest_sec == 0 : 사진 연속 재생 (photo→photo→...)
+        rest_sec  > 0 : 내장 테마(rest_sec) → 사진(show_sec) → 반복
+        """
+        from src.slideshow import load_image_list, prepare_image
+
+        cache_dir  = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "cache", "slideshow"
+        )
+        os.makedirs(cache_dir, exist_ok=True)
+        slide_path = os.path.join(cache_dir, "current.jpg")
+
+        logger.info("슬라이드쇼 스레드 시작")
+
+        # 시작 시 초기 테마 설정
+        cfg           = self.config.get("slideshow", {})
+        restore_theme = int(cfg.get("restore_theme", 1))
+        rest_sec      = int(cfg.get("rest_sec", 0))
+        if restore_theme and rest_sec > 0:
+            self.push_client.set_theme(restore_theme)
+
+        while self._running:
+            # ── 매 순환 시 config 재로드 ──────────────────────
+            cfg           = self.config.get("slideshow", {})
+            folder        = cfg.get("folder", "/home/pi5/Pictures")
+            show_sec      = max(int(cfg.get("show_sec",  10)), 1)
+            rest_sec      = max(int(cfg.get("rest_sec",   0)), 0)
+            shuffle       = bool(cfg.get("shuffle", False))
+            new_theme     = int(cfg.get("restore_theme",  1))
+
+            if new_theme != restore_theme:
+                logger.info(f"슬라이드쇼 복원 테마 변경: {restore_theme} → {new_theme}")
+                restore_theme = new_theme
+
+            # ── 이미지 목록 로드 ──────────────────────────────
+            images = load_image_list(folder, shuffle)
+            if not images:
+                logger.warning(f"슬라이드쇼: 이미지 없음 ({folder}), 10초 후 재시도")
+                for _ in range(10):
+                    if not self._running:
+                        return
+                    time.sleep(1)
+                continue
+
+            logger.info(
+                f"슬라이드쇼: {len(images)}장 / show {show_sec}초"
+                + (f" / 테마 {rest_sec}초" if rest_sec else " / 연속재생")
+            )
+
+            # ── 사진 순환 ─────────────────────────────────────
+            for img_path in images:
+                if not self._running:
+                    return
+
+                # rest_sec > 0: 사진 사이에 내장 테마 표시
+                if rest_sec > 0:
+                    if restore_theme:
+                        self.push_client.set_theme(restore_theme)
+                    for _ in range(rest_sec):
+                        if not self._running:
+                            return
+                        time.sleep(1)
+
+                if not self._running:
+                    return
+
+                # ── 사진 리사이즈 → Push ──────────────────────
+                if not prepare_image(img_path, slide_path):
+                    continue  # 처리 실패 시 다음 사진으로
+
+                self._showing_slideshow = True
+                try:
+                    with self._push_lock:
+                        self.push_client.push_image(slide_path)
+                    logger.info(
+                        f"슬라이드쇼: {os.path.basename(img_path)} ({show_sec}초)"
+                    )
+                except Exception as e:
+                    logger.error(f"슬라이드쇼 Push 실패: {e}")
+                    self._showing_slideshow = False
+                    continue
+
+                # ── 표시 기간 대기 ────────────────────────────
+                for _ in range(show_sec):
+                    if not self._running:
+                        self._showing_slideshow = False
+                        return
+                    time.sleep(1)
+
+                self._showing_slideshow = False
+
     # ── 스케줄 등록 ───────────────────────────────────────────
     def setup_schedule(self):
         clock_interval   = self.config.get("refresh_interval_sec", 60)
@@ -217,7 +321,7 @@ class WeatherClockScheduler:
         self._thread.start()
         logger.info("스케줄러 백그라운드 시작")
 
-        # CPU 모니터 스레드 (config에서 활성화된 경우)
+        # CPU 모니터 스레드
         if self.config.get("cpu_monitor", {}).get("enabled", False):
             self._cpu_thread = threading.Thread(
                 target=self._cpu_monitor_loop, daemon=True, name="cpu-monitor"
@@ -226,8 +330,18 @@ class WeatherClockScheduler:
         else:
             logger.info("CPU 모니터 비활성화 (config: cpu_monitor.enabled=false)")
 
+        # 슬라이드쇼 스레드
+        if self.config.get("slideshow", {}).get("enabled", False):
+            self._slideshow_thread = threading.Thread(
+                target=self._slideshow_loop, daemon=True, name="slideshow"
+            )
+            self._slideshow_thread.start()
+        else:
+            logger.info("슬라이드쇼 비활성화 (config: slideshow.enabled=false)")
+
     # ── 정지 ──────────────────────────────────────────────────
     def stop(self):
-        self._running = False
-        self._showing_cpu = False
+        self._running           = False
+        self._showing_cpu       = False
+        self._showing_slideshow = False
         schedule.clear()

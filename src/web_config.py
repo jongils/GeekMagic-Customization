@@ -59,6 +59,14 @@ def get_default_config() -> dict:
             "rest_sec":      50,
             "restore_theme": 0,
         },
+        "slideshow": {
+            "enabled":       False,
+            "folder":        "/home/pi5/Pictures",
+            "show_sec":      10,
+            "rest_sec":      0,
+            "shuffle":       False,
+            "restore_theme": 1,
+        },
     }
 
 
@@ -97,6 +105,15 @@ def save_config_route():
         config["cpu_monitor"]["rest_sec"]      = int(data.get("cpu_monitor_rest_sec",  50))
         config["cpu_monitor"]["restore_theme"] = int(data.get("cpu_monitor_restore_theme", 0))
 
+        if "slideshow" not in config:
+            config["slideshow"] = {}
+        config["slideshow"]["enabled"]       = data.get("slideshow_enabled") == "on"
+        config["slideshow"]["folder"]        = data.get("slideshow_folder", "/home/pi5/Pictures").strip()
+        config["slideshow"]["show_sec"]      = int(data.get("slideshow_show_sec",  10))
+        config["slideshow"]["rest_sec"]      = int(data.get("slideshow_rest_sec",   0))
+        config["slideshow"]["shuffle"]       = data.get("slideshow_shuffle") == "on"
+        config["slideshow"]["restore_theme"] = int(data.get("slideshow_restore_theme", 1))
+
         save_config(config)
 
         # push_client IP 갱신
@@ -106,6 +123,19 @@ def save_config_route():
         # 스케줄러 config 실시간 갱신 (재시작 없이 반영)
         if _scheduler:
             _scheduler.config.update(config)
+
+            # 슬라이드쇼 스레드 동적 시작 (설정 저장 시 활성화된 경우)
+            import threading
+            if (config.get("slideshow", {}).get("enabled", False)
+                    and (_scheduler._slideshow_thread is None
+                         or not _scheduler._slideshow_thread.is_alive())):
+                _scheduler._slideshow_thread = threading.Thread(
+                    target=_scheduler._slideshow_loop,
+                    daemon=True,
+                    name="slideshow",
+                )
+                _scheduler._slideshow_thread.start()
+                logger.info("슬라이드쇼 스레드 동적 시작")
 
         logger.info("설정 저장 완료")
         return redirect(url_for("index") + "?saved=1")
@@ -138,6 +168,24 @@ def push_now():
         except Exception as e:
             return jsonify({"result": "error", "message": str(e)}), 500
     return jsonify({"result": "error", "message": "스케줄러 미초기화"}), 500
+
+
+@app.route("/slideshow-info")
+def slideshow_info():
+    """슬라이드쇼 폴더 이미지 수 반환 (웹 UI 실시간 표시용).
+    ?folder= 파라미터로 폴더 경로를 동적으로 지정 가능.
+    """
+    config = load_config()
+    folder = request.args.get(
+        "folder",
+        config.get("slideshow", {}).get("folder", "/home/pi5/Pictures")
+    )
+    try:
+        from src.slideshow import count_images
+        count = count_images(folder)
+    except Exception:
+        count = 0
+    return jsonify({"count": count, "folder": folder})
 
 
 @app.route("/preview")

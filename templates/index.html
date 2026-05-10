@@ -323,6 +323,79 @@
       </div>
     </div>
 
+    <!-- 슬라이드쇼 -->
+    <div class="card">
+      <h2>🖼 슬라이드쇼</h2>
+      <div class="toggle-row">
+        <span>로컬 폴더 사진 슬라이드쇼</span>
+        <label class="toggle">
+          <input type="checkbox" name="slideshow_enabled" id="slideshow_enabled"
+            {{ 'checked' if config.slideshow and config.slideshow.enabled }}
+            onchange="toggleSlideshowOptions()">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div id="slideshow_options" style="display:{{ 'block' if config.slideshow and config.slideshow.enabled else 'none' }}">
+        <div class="field" style="margin-top:12px">
+          <label>사진 폴더 경로</label>
+          <input type="text" name="slideshow_folder" id="slideshow_folder"
+            value="{{ config.slideshow.folder if config.slideshow else '/home/pi5/Pictures' }}"
+            placeholder="/home/pi5/Pictures"
+            onchange="fetchSlideshowInfo()">
+          <p class="ip-hint" id="slideshow-count">— 폴더를 입력하면 이미지 수를 확인합니다</p>
+        </div>
+        <div class="time-range" style="margin-top:4px">
+          <div class="field">
+            <label>🖼 사진 표시 시간 (초)</label>
+            <select name="slideshow_show_sec">
+              {% for s in [5, 10, 15, 20, 30, 60] %}
+              <option value="{{ s }}"
+                {{ 'selected' if config.slideshow and config.slideshow.show_sec == s }}>
+                {{ s }}초
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>🖥 사진 사이 테마 표시 (초)</label>
+            <select name="slideshow_rest_sec">
+              <option value="0" {{ 'selected' if not config.slideshow or config.slideshow.get('rest_sec', 0) == 0 }}>연속 재생</option>
+              {% for s in [10, 20, 30, 60, 120] %}
+              <option value="{{ s }}"
+                {{ 'selected' if config.slideshow and config.slideshow.get('rest_sec', 0) == s }}>
+                {{ s }}초
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="toggle-row" style="margin-top:12px">
+          <span>🔀 랜덤 순서 재생</span>
+          <label class="toggle">
+            <input type="checkbox" name="slideshow_shuffle"
+              {{ 'checked' if config.slideshow and config.slideshow.shuffle }}>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>사진 사이 복원 테마 (연속 재생 시 미사용)</label>
+          <select name="slideshow_restore_theme">
+            {% set rt = config.slideshow.restore_theme if config.slideshow else 1 %}
+            <option value="1" {{ 'selected' if rt == 1 }}>내장 테마 1 — Weather Clock Today</option>
+            <option value="2" {{ 'selected' if rt == 2 }}>내장 테마 2 — Weather Forecast</option>
+            <option value="4" {{ 'selected' if rt == 4 }}>내장 테마 4 — Time Style 1</option>
+            <option value="5" {{ 'selected' if rt == 5 }}>내장 테마 5 — Time Style 2</option>
+            <option value="7" {{ 'selected' if rt == 7 }}>내장 테마 7 — Simple Weather Clock</option>
+          </select>
+        </div>
+        <p class="ip-hint" style="margin-top:6px">
+          ▶ 연속 재생: 사진1 → 사진2 → 사진3 → 처음으로<br>
+          ▶ 교대 표시: 내장 테마 N초 → 사진 N초 → 반복<br>
+          ※ 슬라이드쇼 활성화 시 CPU 모니터보다 우선 표시됩니다
+        </p>
+      </div>
+    </div>
+
     <div class="btn-row">
       <button type="submit" class="btn btn-primary">💾 설정 저장</button>
     </div>
@@ -365,6 +438,35 @@
   function toggleCpuOptions() {
     const enabled = document.getElementById("cpu_monitor_enabled").checked;
     document.getElementById("cpu_options").style.display = enabled ? "block" : "none";
+  }
+
+  // 슬라이드쇼 옵션 토글
+  function toggleSlideshowOptions() {
+    const enabled = document.getElementById("slideshow_enabled").checked;
+    document.getElementById("slideshow_options").style.display = enabled ? "block" : "none";
+    if (enabled) fetchSlideshowInfo();
+  }
+
+  // 슬라이드쇼 폴더 이미지 수 조회
+  async function fetchSlideshowInfo() {
+    const folder = document.getElementById("slideshow_folder").value.trim();
+    if (!folder) return;
+    const el = document.getElementById("slideshow-count");
+    el.textContent = "확인 중...";
+    try {
+      const r = await fetch("/slideshow-info?folder=" + encodeURIComponent(folder));
+      const d = await r.json();
+      el.textContent = d.count > 0
+        ? `📁 ${d.count}장의 이미지 발견`
+        : "⚠️ 이미지 없음 (JPG·PNG·BMP·WEBP 지원)";
+    } catch(e) {
+      el.textContent = "⚠️ 폴더 확인 실패";
+    }
+  }
+
+  // 페이지 로드 시 슬라이드쇼 폴더 정보 초기화
+  if (document.getElementById("slideshow_enabled").checked) {
+    fetchSlideshowInfo();
   }
 </script>
 </body>

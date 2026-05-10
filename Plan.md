@@ -5,7 +5,7 @@
 
 ---
 
-## Feature 1: 로컬 폴더 슬라이드쇼 ⏸
+## Feature 1: 로컬 폴더 슬라이드쇼 ✅
 
 ### 개요
 지정한 로컬 폴더에 있는 사진을 GeekMagic 화면에 반복 표시.  
@@ -22,7 +22,7 @@ CPU 모니터와 동일한 방식으로 웹 UI에서 켜고 끌 수 있으며, �
 
 ### 구현 항목
 
-#### 1-A. `src/slideshow.py` 신규 생성 ⏸
+#### 1-A. `src/slideshow.py` 신규 생성 ✅
 - 지정 폴더에서 JPG/PNG/BMP 파일 목록 수집
 - 이미지를 240×240으로 리사이즈 (중앙 크롭)
 - 셔플 모드 지원 (랜덤 순서)
@@ -34,7 +34,7 @@ def load_images(folder: str, shuffle: bool = False) -> list[str]
 def resize_for_display(image_path: str, output_path: str) -> str
 ```
 
-#### 1-B. `config.json` 슬라이드쇼 섹션 추가 ⏸
+#### 1-B. `config.json` 슬라이드쇼 섹션 추가 ✅
 
 ```json
 "slideshow": {
@@ -56,7 +56,7 @@ def resize_for_display(image_path: str, output_path: str) -> str
 | `shuffle` | 랜덤 순서 재생 | `false` |
 | `restore_theme` | 사진 사이 복원할 내장 테마 번호 | `1` |
 
-#### 1-C. `src/scheduler.py` — `_slideshow_loop` 스레드 추가 ⏸
+#### 1-C. `src/scheduler.py` — `_slideshow_loop` 스레드 추가 ✅
 - CPU 모니터와 동일한 구조 (`threading.Lock`, `_push_lock` 공유)
 - 폴더 내용을 매 순환마다 재스캔 (파일 추가/삭제 실시간 반영)
 - 이미지가 없을 경우 대기 후 재시도
@@ -75,9 +75,9 @@ def _slideshow_loop(self):
             ...
 ```
 
-#### 1-D. `src/web_config.py` — 슬라이드쇼 설정 저장/로드 ⏸
+#### 1-D. `src/web_config.py` — 슬라이드쇼 설정 저장/로드 ✅
 
-#### 1-E. `templates/index.html` — 슬라이드쇼 설정 카드 추가 ⏸
+#### 1-E. `templates/index.html` — 슬라이드쇼 설정 카드 추가 ✅
 - 활성화 토글
 - 폴더 경로 입력
 - 사진 표시 시간 / 테마 표시 시간 선택
@@ -85,7 +85,7 @@ def _slideshow_loop(self):
 - 복원 테마 선택 (CPU 모니터와 동일)
 - 현재 폴더의 이미지 수 표시
 
-#### 1-F. `src/push_client.py` — 슬라이드쇼 전용 업로드 파일명 ⏸
+#### 1-F. 슬라이드쇼 전용 업로드 파일명 — 생략 ✅
 - 슬라이드쇼 이미지는 `slideshow_current.jpg`로 업로드
 - CPU 이미지(`weather_clock.jpg`)와 파일명 충돌 방지
 
@@ -210,11 +210,11 @@ class PhotoWatcher:
 
 ```
 Feature 1 (슬라이드쇼)
-  ├── 1-A: slideshow.py 이미지 모듈        ⏸
-  ├── 1-B: config 구조                     ⏸
-  ├── 1-C: scheduler 스레드                ⏸
-  ├── 1-D: web_config 저장/로드            ⏸
-  └── 1-E: index.html UI                  ⏸
+  ├── 1-A: slideshow.py 이미지 모듈        ✅
+  ├── 1-B: config 구조                     ✅
+  ├── 1-C: scheduler 스레드                ✅
+  ├── 1-D: web_config 저장/로드            ✅
+  └── 1-E: index.html UI                  ✅
 
 Feature 2 (OpenClaw 사진)
   ├── 2-A: photo_watcher.py 감시 모듈      ⏸
