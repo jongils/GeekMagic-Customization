@@ -150,9 +150,14 @@ venv/bin/python3 main.py
 웹 설정 UI: `http://[라즈베리파이 IP]:8080`
 
 모든 기능(슬라이드쇼, CPU 모니터, 콘솔 출력)은 웹 UI 또는 `config.json`으로 켜고 끌 수 있으며,  
-설정 저장 시 서비스 재시작 없이 즉시 반영됩니다.
+설정 값(숫자·문자열) 변경은 서비스 재시작 없이 다음 사이클부터 자동 반영됩니다.
 
-> **주의**: `main.py`가 실행 중일 때 `cpu_monitor.py`를 별도로 실행하면 두 프로세스가 장치 테마를 서로 덮어써 충돌이 발생합니다. CPU 모니터는 반드시 `main.py` 내 통합 스케줄러를 사용하세요.
+> **주의 1**: `main.py`가 실행 중일 때 `cpu_monitor.py`를 별도로 실행하면 두 프로세스가 장치 테마를 서로 덮어써 충돌이 발생합니다. CPU 모니터는 반드시 `main.py` 내 통합 스케줄러를 사용하세요.
+
+> **주의 2 (코드 변경 후 반드시 재시작)**: `config.json` 설정 값은 실시간 반영되지만, `src/*.py` 또는 `templates/index.html` 파일을 직접 수정한 경우에는 서비스를 재시작해야 변경 사항이 적용됩니다. Python 모듈은 서비스 기동 시 메모리에 로드되며 이후 파일이 바뀌어도 자동으로 다시 읽지 않습니다. (Flask 템플릿은 요청마다 디스크에서 읽으나, Python 코드는 재시작 필수)
+> ```bash
+> sudo systemctl restart weather-clock
+> ```
 
 **CPU 모니터 standalone (main.py 미실행 시 전용)**
 ```bash
@@ -333,9 +338,14 @@ venv/bin/python3 main.py
 Web config UI: `http://[raspberry-pi-ip]:8080`
 
 All features (slideshow, CPU monitor, console output) can be toggled via the web UI or `config.json`.  
-Config changes apply immediately without restarting the service.
+Config value changes (numbers, strings) are picked up automatically on the next cycle without restarting.
 
-> **Warning**: Running `cpu_monitor.py` while `main.py` is active causes a race condition — both processes fight over the device theme. Use the integrated scheduler in `main.py` instead.
+> **Warning 1**: Running `cpu_monitor.py` while `main.py` is active causes a race condition — both processes fight over the device theme. Use the integrated scheduler in `main.py` instead.
+
+> **Warning 2 (restart required after code changes)**: While `config.json` values are reloaded at runtime, any changes to `src/*.py` or `templates/index.html` require a service restart to take effect. Python modules are loaded into memory at startup and are not reloaded automatically when files change on disk. (Flask templates are re-read per request, but Python code is not.)
+> ```bash
+> sudo systemctl restart weather-clock
+> ```
 
 **CPU Monitor standalone (only when main.py is NOT running)**
 ```bash
