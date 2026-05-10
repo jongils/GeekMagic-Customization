@@ -99,6 +99,70 @@ def _slideshow_loop(self):
 
 ---
 
+## Feature 3: 콘솔 출력 표시 ✅
+
+### 개요
+라즈베리파이 셸 명령어 출력을 240×240 이미지로 렌더링하여 GeekMagic 화면에 표시.  
+웹 UI에서 명령어를 선택/입력하고 **연속 표시** 또는 **교대 표시** 모드를 선택할 수 있음.
+
+### 동작 흐름
+
+```
+[연속 표시] 명령 실행 → 이미지 렌더링 → Push → refresh_sec 대기 → 반복
+
+[교대 표시] 내장 테마(rest_sec) → 명령 실행 → 이미지 Push(show_sec) → 반복
+```
+
+### 구현 항목
+
+#### 3-A. `src/console_image.py` 신규 생성 ✅
+- `run_command(command, timeout=8)` — subprocess로 명령 실행
+- `_wrap_lines(raw_output)` — 39자 줄바꿈, 마지막 18줄 반환
+- `generate_console_image(command, label)` — 다크 테마 240×240 이미지 렌더링
+- `_line_color(line)` — 오류=빨강, 경고=노랑, 성공=초록, 기본=연한 흰색
+
+#### 3-B. `config.json` console 섹션 추가 ✅
+
+```json
+"console": {
+  "enabled": false,
+  "command": "vcgencmd measure_temp && free -h && df -h /",
+  "label": "",
+  "refresh_sec": 5,
+  "show_sec": 30,
+  "rest_sec": 0,
+  "restore_theme": 1
+}
+```
+
+| 항목 | 설명 | 기본값 |
+|------|------|--------|
+| `enabled` | 콘솔 표시 활성화 | `false` |
+| `command` | 실행할 셸 명령어 | Pi 상태 조회 |
+| `label` | 타이틀 바 텍스트 (비어있으면 명령어 앞부분) | `""` |
+| `refresh_sec` | 연속 모드: 명령 재실행 주기 (초) | `5` |
+| `show_sec` | 교대 모드: 콘솔 표시 시간 (초) | `30` |
+| `rest_sec` | 0=연속 표시, N=교대 표시 (테마 표시 시간) | `0` |
+| `restore_theme` | 교대 모드 복원 내장 테마 번호 | `1` |
+
+#### 3-C. `src/scheduler.py` — `_console_loop` 스레드 추가 ✅
+- 연속 모드: `refresh_sec`마다 명령 재실행 후 이미지 갱신
+- 교대 모드: 내장 테마 표시 → 콘솔 Push → `show_sec` 대기
+- `_showing_console` 플래그로 날씨 Push 차단
+
+#### 3-D. `src/web_config.py` — console 설정 저장/로드 ✅
+- `/console-preview?command=&label=` GET 엔드포인트 (즉시 렌더링 미리보기)
+- 설정 저장 시 콘솔 스레드 동적 시작
+
+#### 3-E. `templates/index.html` — 콘솔 설정 카드 추가 ✅
+- 활성화 토글
+- 프리셋 명령어 선택 (온도/메모리/디스크/프로세스/로그 등)
+- 커스텀 명령어 직접 입력
+- 표시 모드 선택 (연속/교대)
+- 실시간 미리보기 버튼
+
+---
+
 ## Feature 2: OpenClaw 수신 사진 표시 ⏸
 
 ### 배경
@@ -215,6 +279,13 @@ Feature 1 (슬라이드쇼)
   ├── 1-C: scheduler 스레드                ✅
   ├── 1-D: web_config 저장/로드            ✅
   └── 1-E: index.html UI                  ✅
+
+Feature 3 (콘솔 출력 표시)
+  ├── 3-A: console_image.py 렌더링 모듈    ✅
+  ├── 3-B: config 구조                     ✅
+  ├── 3-C: scheduler 스레드                ✅
+  ├── 3-D: web_config 저장/로드+미리보기   ✅
+  └── 3-E: index.html UI                  ✅
 
 Feature 2 (OpenClaw 사진)
   ├── 2-A: photo_watcher.py 감시 모듈      ⏸

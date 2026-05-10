@@ -31,6 +31,8 @@ class WeatherClockScheduler:
         self._push_lock           = threading.Lock()  # Push 동시 실행 방지
         self._showing_cpu         = False             # CPU 표시 중 플래그
         self._showing_slideshow   = False             # 슬라이드쇼 표시 중 플래그
+        self._console_thread      = None
+        self._showing_console     = False             # 콘솔 표시 중 플래그
 
     # ── 야간 모드 ─────────────────────────────────────────────
     def _is_night_mode(self) -> bool:
@@ -67,7 +69,7 @@ class WeatherClockScheduler:
         if self._restore_theme() != 0:
             logger.debug("내장 테마 모드 — 날씨 Push 건너뜀")
             return
-        if self._showing_cpu or self._showing_slideshow:
+        if self._showing_cpu or self._showing_slideshow or self._showing_console:
             logger.debug("다른 콘텐츠 표시 중 — 날씨 Push 건너뜀")
             return
         if self._is_night_mode():
@@ -279,6 +281,89 @@ class WeatherClockScheduler:
 
                 self._showing_slideshow = False
 
+    # ── 콘솔 출력 스레드 ─────────────────────────────────────
+    def _console_loop(self):
+        """명령어 출력을 240×240 이미지로 렌더링해 장치에 표시하는 스레드.
+
+        rest_sec == 0 : 연속 표시 — refresh_sec마다 명령 재실행 후 이미지 갱신
+        rest_sec  > 0 : 교대 표시 — 내장 테마(rest_sec) → 콘솔(show_sec) → 반복
+        """
+        from src.console_image import generate_console_image
+        from src.image_generator import save_image
+
+        cache_dir  = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "cache", "console"
+        )
+        os.makedirs(cache_dir, exist_ok=True)
+        console_path = os.path.join(cache_dir, "current.jpg")
+
+        logger.info("콘솔 표시 스레드 시작")
+
+        while self._running:
+            cfg           = self.config.get("console", {})
+            command       = cfg.get("command", "").strip()
+            label         = cfg.get("label", "").strip()
+            refresh_sec   = max(int(cfg.get("refresh_sec",   5)),  1)
+            show_sec      = max(int(cfg.get("show_sec",     30)),  1)
+            rest_sec      = max(int(cfg.get("rest_sec",      0)),  0)
+            restore_theme = int(cfg.get("restore_theme",     1))
+
+            if not command:
+                time.sleep(5)
+                continue
+
+            if rest_sec > 0:
+                # ── 교대 표시 모드: 내장 테마 → 콘솔 → 반복 ──────
+                if restore_theme:
+                    self.push_client.set_theme(restore_theme)
+                for _ in range(rest_sec):
+                    if not self._running:
+                        return
+                    time.sleep(1)
+
+                if not self._running:
+                    return
+
+                # 콘솔 이미지 생성 → Push
+                try:
+                    img = generate_console_image(command, label)
+                    if save_image(img, console_path):
+                        self._showing_console = True
+                        with self._push_lock:
+                            self.push_client.push_image(console_path)
+                        logger.debug(f"콘솔 표시 ({show_sec}초): {command[:40]}")
+                except Exception as e:
+                    logger.error(f"콘솔 이미지 생성 실패: {e}")
+                    self._showing_console = False
+                    time.sleep(5)
+                    continue
+
+                for _ in range(show_sec):
+                    if not self._running:
+                        self._showing_console = False
+                        return
+                    time.sleep(1)
+
+                self._showing_console = False
+
+            else:
+                # ── 연속 표시 모드: refresh_sec마다 갱신 ──────────
+                try:
+                    img = generate_console_image(command, label)
+                    if save_image(img, console_path):
+                        self._showing_console = True
+                        with self._push_lock:
+                            self.push_client.push_image(console_path)
+                        logger.debug(f"콘솔 갱신: {command[:40]}")
+                except Exception as e:
+                    logger.error(f"콘솔 이미지 생성 실패: {e}")
+
+                for _ in range(refresh_sec):
+                    if not self._running:
+                        self._showing_console = False
+                        return
+                    time.sleep(1)
+
     # ── 스케줄 등록 ───────────────────────────────────────────
     def setup_schedule(self):
         clock_interval   = self.config.get("refresh_interval_sec", 60)
@@ -339,9 +424,19 @@ class WeatherClockScheduler:
         else:
             logger.info("슬라이드쇼 비활성화 (config: slideshow.enabled=false)")
 
+        # 콘솔 표시 스레드
+        if self.config.get("console", {}).get("enabled", False):
+            self._console_thread = threading.Thread(
+                target=self._console_loop, daemon=True, name="console"
+            )
+            self._console_thread.start()
+        else:
+            logger.info("콘솔 표시 비활성화 (config: console.enabled=false)")
+
     # ── 정지 ──────────────────────────────────────────────────
     def stop(self):
         self._running           = False
         self._showing_cpu       = False
         self._showing_slideshow = False
+        self._showing_console   = False
         schedule.clear()

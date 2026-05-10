@@ -67,6 +67,15 @@ def get_default_config() -> dict:
             "shuffle":       False,
             "restore_theme": 1,
         },
+        "console": {
+            "enabled":       False,
+            "command":       "vcgencmd measure_temp && free -h && df -h /",
+            "label":         "",
+            "refresh_sec":   5,
+            "show_sec":      30,
+            "rest_sec":      0,
+            "restore_theme": 1,
+        },
     }
 
 
@@ -114,6 +123,16 @@ def save_config_route():
         config["slideshow"]["shuffle"]       = data.get("slideshow_shuffle") == "on"
         config["slideshow"]["restore_theme"] = int(data.get("slideshow_restore_theme", 1))
 
+        if "console" not in config:
+            config["console"] = {}
+        config["console"]["enabled"]       = data.get("console_enabled") == "on"
+        config["console"]["command"]       = data.get("console_command", "").strip()
+        config["console"]["label"]         = data.get("console_label", "").strip()
+        config["console"]["refresh_sec"]   = int(data.get("console_refresh_sec",  5))
+        config["console"]["show_sec"]      = int(data.get("console_show_sec",    30))
+        config["console"]["rest_sec"]      = int(data.get("console_rest_sec",     0))
+        config["console"]["restore_theme"] = int(data.get("console_restore_theme", 1))
+
         save_config(config)
 
         # push_client IP 갱신
@@ -124,8 +143,9 @@ def save_config_route():
         if _scheduler:
             _scheduler.config.update(config)
 
-            # 슬라이드쇼 스레드 동적 시작 (설정 저장 시 활성화된 경우)
             import threading
+
+            # 슬라이드쇼 스레드 동적 시작 (설정 저장 시 활성화된 경우)
             if (config.get("slideshow", {}).get("enabled", False)
                     and (_scheduler._slideshow_thread is None
                          or not _scheduler._slideshow_thread.is_alive())):
@@ -136,6 +156,18 @@ def save_config_route():
                 )
                 _scheduler._slideshow_thread.start()
                 logger.info("슬라이드쇼 스레드 동적 시작")
+
+            # 콘솔 스레드 동적 시작 (설정 저장 시 활성화된 경우)
+            if (config.get("console", {}).get("enabled", False)
+                    and (_scheduler._console_thread is None
+                         or not _scheduler._console_thread.is_alive())):
+                _scheduler._console_thread = threading.Thread(
+                    target=_scheduler._console_loop,
+                    daemon=True,
+                    name="console",
+                )
+                _scheduler._console_thread.start()
+                logger.info("콘솔 스레드 동적 시작")
 
         logger.info("설정 저장 완료")
         return redirect(url_for("index") + "?saved=1")
@@ -197,3 +229,35 @@ def preview():
     if os.path.exists(cache_path):
         return send_file(cache_path, mimetype="image/jpeg")
     return "이미지 없음", 404
+
+
+@app.route("/console-preview")
+def console_preview():
+    """콘솔 출력 이미지 즉시 생성 후 반환 (웹 UI 미리보기용).
+    ?command= 파라미터로 명령어를 동적으로 지정 가능.
+    """
+    config  = load_config()
+    command = request.args.get(
+        "command",
+        config.get("console", {}).get("command", "")
+    ).strip()
+    label = request.args.get(
+        "label",
+        config.get("console", {}).get("label", "")
+    ).strip()
+
+    if not command:
+        return "명령어 없음", 400
+
+    try:
+        from src.console_image import generate_console_image
+        img = generate_console_image(command, label)
+        preview_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "cache", "console_preview.jpg"
+        )
+        os.makedirs(os.path.dirname(preview_path), exist_ok=True)
+        img.save(preview_path, "JPEG", quality=90)
+        return send_file(preview_path, mimetype="image/jpeg")
+    except Exception as e:
+        logger.error(f"콘솔 미리보기 생성 실패: {e}")
+        return str(e), 500

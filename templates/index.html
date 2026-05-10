@@ -396,6 +396,122 @@
       </div>
     </div>
 
+    <!-- 콘솔 표시 -->
+    <div class="card">
+      <h2>💻 콘솔 표시</h2>
+      <div class="toggle-row">
+        <span>명령어 출력을 화면에 표시</span>
+        <label class="toggle">
+          <input type="checkbox" name="console_enabled" id="console_enabled"
+            {{ 'checked' if config.console and config.console.enabled }}
+            onchange="toggleConsoleOptions()">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div id="console_options" style="display:{{ 'block' if config.console and config.console.enabled else 'none' }}">
+        <div class="field" style="margin-top:12px">
+          <label>실행할 명령어</label>
+          <select id="console_preset" onchange="applyConsolePreset(this.value)" style="margin-bottom:8px">
+            <option value="">— 프리셋 선택 —</option>
+            <option value="vcgencmd measure_temp && free -h && df -h /">🌡 온도 + 메모리 + 디스크</option>
+            <option value="top -b -n 1 | head -25">📊 프로세스 목록 (top)</option>
+            <option value="ps aux --sort=-%cpu | head -20">🔥 CPU 사용률 상위 프로세스</option>
+            <option value="free -h">💾 메모리 사용량</option>
+            <option value="df -h">💿 디스크 사용량</option>
+            <option value="ip addr show | grep inet">🌐 네트워크 IP</option>
+            <option value="journalctl -n 20 --no-pager">📋 시스템 로그 (최근 20줄)</option>
+            <option value="systemctl status weather-clock --no-pager">🔧 서비스 상태</option>
+            <option value="uptime && uname -a">⏱ 가동 시간 + 시스템 정보</option>
+          </select>
+          <input type="text" name="console_command" id="console_command"
+            value="{{ config.console.command if config.console else 'vcgencmd measure_temp && free -h && df -h /' }}"
+            placeholder="실행할 셸 명령어">
+        </div>
+        <div class="field">
+          <label>타이틀 레이블 (비워두면 명령어 앞부분 표시)</label>
+          <input type="text" name="console_label" id="console_label"
+            value="{{ config.console.label if config.console else '' }}"
+            placeholder="예: Pi Status">
+        </div>
+
+        <!-- 표시 모드 -->
+        <div class="field" style="margin-top:4px">
+          <label>표시 모드</label>
+          <select name="console_rest_sec" id="console_rest_sec" onchange="toggleConsoleMode()">
+            <option value="0"
+              {{ 'selected' if not config.console or config.console.get('rest_sec', 0) == 0 }}>
+              🔁 연속 표시 (항상 콘솔 유지, N초마다 갱신)
+            </option>
+            {% for s in [10, 20, 30, 60, 120] %}
+            <option value="{{ s }}"
+              {{ 'selected' if config.console and config.console.get('rest_sec', 0) == s }}>
+              🔄 교대 표시 — 테마 {{ s }}초 → 콘솔 표시
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- 연속 표시: refresh_sec -->
+        <div id="console_continuous_opts" style="margin-top:4px">
+          <div class="field">
+            <label>🔄 명령 재실행 주기 (초) — 이 간격마다 출력 갱신</label>
+            <select name="console_refresh_sec">
+              {% for s in [3, 5, 10, 15, 30, 60] %}
+              <option value="{{ s }}"
+                {{ 'selected' if config.console and config.console.get('refresh_sec', 5) == s }}>
+                {{ s }}초마다 갱신
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- 교대 표시: show_sec + restore_theme -->
+        <div id="console_alternate_opts" style="display:none; margin-top:4px">
+          <div class="field">
+            <label>💻 콘솔 표시 시간 (초)</label>
+            <select name="console_show_sec">
+              {% for s in [10, 15, 20, 30, 60] %}
+              <option value="{{ s }}"
+                {{ 'selected' if config.console and config.console.get('show_sec', 30) == s }}>
+                {{ s }}초
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>콘솔 종료 후 복원 테마</label>
+            <select name="console_restore_theme">
+              {% set crt = config.console.restore_theme if config.console else 1 %}
+              <option value="1" {{ 'selected' if crt == 1 }}>내장 테마 1 — Weather Clock Today</option>
+              <option value="2" {{ 'selected' if crt == 2 }}>내장 테마 2 — Weather Forecast</option>
+              <option value="4" {{ 'selected' if crt == 4 }}>내장 테마 4 — Time Style 1</option>
+              <option value="5" {{ 'selected' if crt == 5 }}>내장 테마 5 — Time Style 2</option>
+              <option value="7" {{ 'selected' if crt == 7 }}>내장 테마 7 — Simple Weather Clock</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 미리보기 -->
+        <div style="margin-top:14px">
+          <button type="button" class="btn btn-ghost" onclick="fetchConsolePreview()" style="width:100%">
+            👁 명령 실행 결과 미리보기
+          </button>
+          <div id="console-preview-box" style="display:none; margin-top:10px; text-align:center">
+            <img id="console-preview-img" src="" style="width:180px; height:180px; border-radius:8px;
+              border:1px solid #252e55; image-rendering:pixelated;">
+          </div>
+          <p class="ip-hint" id="console-preview-status" style="margin-top:6px"></p>
+        </div>
+
+        <p class="ip-hint" style="margin-top:8px">
+          ▶ 연속 표시: 콘솔이 항상 화면을 유지, N초마다 명령 재실행하여 갱신<br>
+          ▶ 교대 표시: 내장 테마 → 콘솔 화면 → 반복<br>
+          ※ 콘솔 표시는 슬라이드쇼보다 낮은 우선순위로 작동합니다
+        </p>
+      </div>
+    </div>
+
     <div class="btn-row">
       <button type="submit" class="btn btn-primary">💾 설정 저장</button>
     </div>
@@ -468,6 +584,51 @@
   if (document.getElementById("slideshow_enabled").checked) {
     fetchSlideshowInfo();
   }
+
+  // 콘솔 옵션 토글
+  function toggleConsoleOptions() {
+    const enabled = document.getElementById("console_enabled").checked;
+    document.getElementById("console_options").style.display = enabled ? "block" : "none";
+  }
+
+  // 콘솔 표시 모드 전환 (연속 / 교대)
+  function toggleConsoleMode() {
+    const restSec = parseInt(document.getElementById("console_rest_sec").value, 10);
+    document.getElementById("console_continuous_opts").style.display = restSec === 0 ? "block" : "none";
+    document.getElementById("console_alternate_opts").style.display  = restSec  > 0 ? "block" : "none";
+  }
+
+  // 프리셋 명령어 선택 시 입력 필드에 반영
+  function applyConsolePreset(value) {
+    if (value) {
+      document.getElementById("console_command").value = value;
+    }
+  }
+
+  // 콘솔 출력 미리보기 fetch
+  async function fetchConsolePreview() {
+    const command = document.getElementById("console_command").value.trim();
+    const label   = document.getElementById("console_label").value.trim();
+    const status  = document.getElementById("console-preview-status");
+    if (!command) { status.textContent = "⚠️ 명령어를 입력하세요"; return; }
+    status.textContent = "⏳ 명령 실행 중...";
+    document.getElementById("console-preview-box").style.display = "none";
+    try {
+      const url = "/console-preview?command=" + encodeURIComponent(command) + "&label=" + encodeURIComponent(label);
+      const r   = await fetch(url);
+      if (!r.ok) { status.textContent = "❌ 실행 실패: " + r.status; return; }
+      const blob = await r.blob();
+      const img  = document.getElementById("console-preview-img");
+      img.src = URL.createObjectURL(blob);
+      document.getElementById("console-preview-box").style.display = "block";
+      status.textContent = "✅ 미리보기 생성 완료";
+    } catch(e) {
+      status.textContent = "❌ 오류: " + e.message;
+    }
+  }
+
+  // 페이지 로드 시 콘솔 모드 초기화
+  toggleConsoleMode();
 </script>
 </body>
 </html>
