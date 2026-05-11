@@ -36,5 +36,11 @@
     "show_sec": 30,
     "rest_sec": 0,
     "restore_theme": 1
+  },
+  "camera": {
+    "enabled": false,
+    "server_url": "http://192.168.x.x:5050",
+    "show_sec": 10,
+    "restore_theme": 1
   }
 }

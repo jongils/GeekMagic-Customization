@@ -76,6 +76,12 @@ def get_default_config() -> dict:
             "rest_sec":      0,
             "restore_theme": 1,
         },
+        "camera": {
+            "enabled":       False,
+            "server_url":    "http://192.168.x.x:5050",
+            "show_sec":      10,
+            "restore_theme": 1,
+        },
     }
 
 
@@ -133,6 +139,13 @@ def save_config_route():
         config["console"]["rest_sec"]      = int(data.get("console_rest_sec",     0))
         config["console"]["restore_theme"] = int(data.get("console_restore_theme", 1))
 
+        if "camera" not in config:
+            config["camera"] = {}
+        config["camera"]["enabled"]       = data.get("camera_enabled") == "on"
+        config["camera"]["server_url"]    = data.get("camera_server_url", "http://192.168.x.x:5050").strip()
+        config["camera"]["show_sec"]      = int(data.get("camera_show_sec", 10))
+        config["camera"]["restore_theme"] = int(data.get("camera_restore_theme", 1))
+
         save_config(config)
 
         # push_client IP 갱신
@@ -180,6 +193,18 @@ def save_config_route():
                 )
                 _scheduler._console_thread.start()
                 logger.info("콘솔 스레드 동적 시작")
+
+            # 카메라 슬라이드쇼 스레드 동적 시작 (설정 저장 시 활성화된 경우)
+            if (config.get("camera", {}).get("enabled", False)
+                    and (_scheduler._camera_thread is None
+                         or not _scheduler._camera_thread.is_alive())):
+                _scheduler._camera_thread = threading.Thread(
+                    target=_scheduler._camera_loop,
+                    daemon=True,
+                    name="camera",
+                )
+                _scheduler._camera_thread.start()
+                logger.info("카메라 슬라이드쇼 스레드 동적 시작")
 
         logger.info("설정 저장 완료")
         return redirect(url_for("index") + "?saved=1")
@@ -241,6 +266,75 @@ def preview():
     if os.path.exists(cache_path):
         return send_file(cache_path, mimetype="image/jpeg")
     return "이미지 없음", 404
+
+
+def _get_camera_dir() -> str:
+    return os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache", "camera_feed")
+
+
+def _get_camera_client():
+    config     = load_config()
+    server_url = config.get("camera", {}).get("server_url", "")
+    save_dir   = _get_camera_dir()
+    from src.camera_client import CameraClient
+    return CameraClient(server_url, save_dir)
+
+
+@app.route("/camera/status")
+def camera_status():
+    """Pi 125 카메라 서버 연결 상태 + 로컬 사진 수"""
+    client = _get_camera_client()
+    online = client.is_online()
+    photos = client.list_local()
+    return jsonify({"online": online, "count": len(photos)})
+
+
+@app.route("/camera/capture", methods=["POST"])
+def camera_capture():
+    """촬영 트리거 — Pi 125 촬영 → Pi 116 다운로드"""
+    client   = _get_camera_client()
+    filename = client.capture()
+    if filename:
+        photos = client.list_local()
+        return jsonify({"status": "ok", "filename": filename, "count": len(photos)})
+    return jsonify({"status": "error", "message": "촬영 실패 — 카메라 서버 연결 확인"}), 500
+
+
+@app.route("/camera/photos")
+def camera_photos():
+    """Pi 116 로컬 사진 목록"""
+    client = _get_camera_client()
+    photos = client.list_local()
+    return jsonify({"photos": photos, "count": len(photos)})
+
+
+@app.route("/camera/photo/<filename>")
+def camera_photo(filename):
+    """썸네일 이미지 반환"""
+    if ".." in filename or "/" in filename:
+        return "invalid", 400
+    path = os.path.join(_get_camera_dir(), filename)
+    if os.path.exists(path):
+        return send_file(path, mimetype="image/jpeg")
+    return "not found", 404
+
+
+@app.route("/camera/delete/<filename>", methods=["DELETE"])
+def camera_delete(filename):
+    """사진 1장 삭제"""
+    client = _get_camera_client()
+    if client.delete_local(filename):
+        photos = client.list_local()
+        return jsonify({"status": "ok", "count": len(photos)})
+    return jsonify({"status": "error"}), 404
+
+
+@app.route("/camera/delete-all", methods=["DELETE"])
+def camera_delete_all():
+    """전체 사진 삭제"""
+    client = _get_camera_client()
+    count  = client.delete_all_local()
+    return jsonify({"status": "ok", "deleted": count})
 
 
 @app.route("/console-preview")

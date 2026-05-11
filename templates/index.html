@@ -396,6 +396,95 @@
       </div>
     </div>
 
+    <!-- 카메라 촬영 -->
+    <div class="card">
+      <h2>📷 카메라 촬영</h2>
+      <div class="toggle-row">
+        <span>촬영 사진 GeekMagic 슬라이드쇼 표시</span>
+        <label class="toggle">
+          <input type="checkbox" name="camera_enabled" id="camera_enabled"
+            {{ 'checked' if config.camera and config.camera.enabled }}
+            onchange="toggleCameraOptions()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- 서버 URL + 연결 상태 -->
+      <div class="field" style="margin-top:14px">
+        <label>Pi 125 카메라 서버 URL</label>
+        <input type="text" name="camera_server_url" id="camera_server_url"
+          value="{{ config.camera.server_url if config.camera else 'http://192.168.x.x:5050' }}"
+          placeholder="http://192.168.x.x:5050">
+        <p class="ip-hint" id="camera-status-text" style="margin-top:5px">
+          — 저장 후 연결 상태가 표시됩니다
+        </p>
+      </div>
+
+      <!-- 촬영 버튼 -->
+      <div class="btn-row" style="margin-top:4px">
+        <button type="button" class="btn btn-primary" id="camera-capture-btn"
+          onclick="cameraCapture()" style="flex:2">
+          📸 촬영
+        </button>
+        <button type="button" class="btn btn-ghost" onclick="checkCameraStatus()">
+          🔄 연결 확인
+        </button>
+      </div>
+
+      <!-- 사진 갤러리 -->
+      <div style="margin-top:14px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <span style="font-size:.825rem; color:#8a96c0">
+            촬영된 사진 <span id="camera-photo-count" style="color:#7c9cff; font-weight:600">0</span>장
+          </span>
+          <button type="button" class="btn btn-ghost"
+            onclick="cameraDeleteAll()"
+            style="padding:5px 10px; font-size:.75rem; flex:none">
+            🗑 전체 삭제
+          </button>
+        </div>
+        <div id="camera-gallery"
+          style="display:flex; flex-wrap:wrap; gap:6px; min-height:40px">
+          <p id="camera-no-photos" style="color:#3d4a70; font-size:.825rem; padding:10px 0">
+            아직 촬영된 사진이 없습니다
+          </p>
+        </div>
+      </div>
+
+      <!-- 슬라이드쇼 설정 -->
+      <div id="camera_slideshow_opts"
+        style="display:{{ 'block' if config.camera and config.camera.enabled else 'none' }}; margin-top:14px; padding-top:14px; border-top:1px solid #252e55">
+        <div class="time-range">
+          <div class="field">
+            <label>📷 사진 표시 시간 (초)</label>
+            <select name="camera_show_sec">
+              {% for s in [5, 10, 15, 20, 30, 60] %}
+              <option value="{{ s }}"
+                {{ 'selected' if config.camera and config.camera.get('show_sec', 10) == s }}>
+                {{ s }}초
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>종료 후 복원 테마</label>
+            <select name="camera_restore_theme">
+              {% set camt = config.camera.restore_theme if config.camera else 1 %}
+              <option value="1" {{ 'selected' if camt == 1 }}>내장 테마 1 — Weather Clock Today</option>
+              <option value="2" {{ 'selected' if camt == 2 }}>내장 테마 2 — Weather Forecast</option>
+              <option value="4" {{ 'selected' if camt == 4 }}>내장 테마 4 — Time Style 1</option>
+              <option value="5" {{ 'selected' if camt == 5 }}>내장 테마 5 — Time Style 2</option>
+              <option value="7" {{ 'selected' if camt == 7 }}>내장 테마 7 — Simple Weather Clock</option>
+            </select>
+          </div>
+        </div>
+        <p class="ip-hint" style="margin-top:6px">
+          ▶ 촬영된 사진을 시간순으로 반복 표시합니다<br>
+          ※ 카메라 슬라이드쇼는 일반 슬라이드쇼보다 우선 표시됩니다
+        </p>
+      </div>
+    </div>
+
     <!-- 콘솔 표시 -->
     <div class="card">
       <h2>💻 콘솔 표시</h2>
@@ -584,6 +673,101 @@
   if (document.getElementById("slideshow_enabled").checked) {
     fetchSlideshowInfo();
   }
+
+  // ── 카메라 함수 ───────────────────────────────────────────
+
+  function toggleCameraOptions() {
+    const enabled = document.getElementById("camera_enabled").checked;
+    document.getElementById("camera_slideshow_opts").style.display = enabled ? "block" : "none";
+  }
+
+  async function checkCameraStatus() {
+    const statusEl = document.getElementById("camera-status-text");
+    statusEl.textContent = "확인 중...";
+    try {
+      const r = await fetch("/camera/status");
+      const d = await r.json();
+      statusEl.textContent = d.online
+        ? `✅ 카메라 서버 연결됨 — 저장 사진 ${d.count}장`
+        : "❌ 카메라 서버에 연결할 수 없습니다";
+      statusEl.style.color = d.online ? "#4ade80" : "#f87171";
+      if (d.online) renderGallery();
+    } catch(e) {
+      statusEl.textContent = "❌ 연결 확인 실패";
+      statusEl.style.color = "#f87171";
+    }
+  }
+
+  async function cameraCapture() {
+    const btn = document.getElementById("camera-capture-btn");
+    btn.disabled = true;
+    btn.textContent = "⏳ 촬영 중...";
+    try {
+      const r = await fetch("/camera/capture", { method: "POST" });
+      const d = await r.json();
+      if (d.status === "ok") {
+        btn.textContent = "✅ 촬영 완료!";
+        renderGallery();
+      } else {
+        btn.textContent = "❌ " + (d.message || "촬영 실패");
+      }
+    } catch(e) {
+      btn.textContent = "❌ 오류: " + e.message;
+    }
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = "📸 촬영";
+    }, 2500);
+  }
+
+  async function renderGallery() {
+    try {
+      const r = await fetch("/camera/photos");
+      const d = await r.json();
+      const gallery = document.getElementById("camera-gallery");
+      const noPhotos = document.getElementById("camera-no-photos");
+      const countEl  = document.getElementById("camera-photo-count");
+      countEl.textContent = d.count;
+      if (d.count === 0) {
+        gallery.innerHTML = "";
+        gallery.appendChild(noPhotos);
+        noPhotos.style.display = "block";
+        return;
+      }
+      noPhotos.style.display = "none";
+      gallery.innerHTML = d.photos.map(f => `
+        <div style="position:relative; width:72px; height:72px">
+          <img src="/camera/photo/${encodeURIComponent(f)}"
+            style="width:72px; height:72px; object-fit:cover; border-radius:6px;
+                   border:1px solid #252e55; cursor:pointer"
+            title="${f}"
+            onclick="window.open('/camera/photo/${encodeURIComponent(f)}')">
+          <button onclick="cameraDeleteOne('${f}', this)"
+            style="position:absolute; top:2px; right:2px; width:18px; height:18px;
+                   background:rgba(0,0,0,.7); color:#fff; border:none; border-radius:50%;
+                   font-size:10px; cursor:pointer; line-height:18px; padding:0">✕</button>
+        </div>`).join("");
+    } catch(e) { /* ignore */ }
+  }
+
+  async function cameraDeleteOne(filename, btn) {
+    if (!confirm(`"${filename}" 을 삭제할까요?`)) return;
+    btn.closest("div").style.opacity = "0.3";
+    try {
+      await fetch(`/camera/delete/${encodeURIComponent(filename)}`, { method: "DELETE" });
+      renderGallery();
+    } catch(e) { btn.closest("div").style.opacity = "1"; }
+  }
+
+  async function cameraDeleteAll() {
+    if (!confirm("모든 사진을 삭제할까요?")) return;
+    await fetch("/camera/delete-all", { method: "DELETE" });
+    renderGallery();
+  }
+
+  // 페이지 로드 시 카메라 갤러리 초기화
+  renderGallery();
+  checkCameraStatus();
 
   // 콘솔 옵션 토글
   function toggleConsoleOptions() {

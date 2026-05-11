@@ -33,6 +33,8 @@ class WeatherClockScheduler:
         self._showing_slideshow   = False             # 슬라이드쇼 표시 중 플래그
         self._console_thread      = None
         self._showing_console     = False             # 콘솔 표시 중 플래그
+        self._camera_thread       = None
+        self._showing_camera      = False             # 카메라 슬라이드쇼 표시 중 플래그
 
     # ── 야간 모드 ─────────────────────────────────────────────
     def _is_night_mode(self) -> bool:
@@ -63,13 +65,16 @@ class WeatherClockScheduler:
         """날씨+시계 이미지 생성 → 장치 Push.
         슬라이드쇼·내장 테마 모드·CPU 표시 중에는 skip.
         """
+        if self.config.get("camera", {}).get("enabled", False):
+            logger.debug("카메라 슬라이드쇼 모드 — 날씨 Push 건너뜀")
+            return
         if self.config.get("slideshow", {}).get("enabled", False):
             logger.debug("슬라이드쇼 모드 — 날씨 Push 건너뜀")
             return
         if self._restore_theme() != 0:
             logger.debug("내장 테마 모드 — 날씨 Push 건너뜀")
             return
-        if self._showing_cpu or self._showing_slideshow or self._showing_console:
+        if self._showing_cpu or self._showing_slideshow or self._showing_console or self._showing_camera:
             logger.debug("다른 콘텐츠 표시 중 — 날씨 Push 건너뜀")
             return
         if self._is_night_mode():
@@ -224,6 +229,11 @@ class WeatherClockScheduler:
             self.push_client.set_theme(restore_theme)
 
         while self._running:
+            # 카메라 슬라이드쇼가 활성화되어 있으면 슬라이드쇼 양보
+            if self.config.get("camera", {}).get("enabled", False):
+                time.sleep(5)
+                continue
+
             # ── 비활성화 감지 시 스레드 자가 종료 ────────────
             if not self.config.get("slideshow", {}).get("enabled", False):
                 logger.info("슬라이드쇼 비활성화 감지 — 스레드 종료")
@@ -414,6 +424,94 @@ class WeatherClockScheduler:
                         break
                     time.sleep(1)
 
+    # ── 카메라 슬라이드쇼 스레드 ─────────────────────────────
+    def _camera_loop(self):
+        """촬영된 사진을 시간순으로 반복 표시하는 스레드.
+
+        cache/camera_feed/ 폴더의 사진을 정렬된 순서로 순환.
+        사진이 없으면 5초마다 재확인.
+        비활성화 감지 시 즉시 종료 + 화면 복원.
+        """
+        from src.slideshow import prepare_image
+
+        camera_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "cache", "camera_feed"
+        )
+        os.makedirs(camera_dir, exist_ok=True)
+        cam_path = os.path.join(camera_dir, "display_current.jpg")
+
+        logger.info("카메라 슬라이드쇼 스레드 시작")
+        restore_theme = int(self.config.get("camera", {}).get("restore_theme", 1))
+
+        while self._running:
+            # ── 비활성화 감지 시 스레드 자가 종료 ────────────
+            if not self.config.get("camera", {}).get("enabled", False):
+                logger.info("카메라 슬라이드쇼 비활성화 감지 — 스레드 종료")
+                self._showing_camera = False
+                if restore_theme:
+                    self.push_client.set_theme(restore_theme)
+                else:
+                    self._update_display()
+                return
+
+            cfg           = self.config.get("camera", {})
+            show_sec      = max(int(cfg.get("show_sec", 10)), 1)
+            restore_theme = int(cfg.get("restore_theme", 1))
+
+            # ── 사진 목록 로드 (시간순 고정, shuffle 없음) ──
+            try:
+                images = sorted(
+                    os.path.join(camera_dir, f)
+                    for f in os.listdir(camera_dir)
+                    if f.lower().endswith((".jpg", ".jpeg", ".png"))
+                    and f != "display_current.jpg"
+                )
+            except Exception:
+                images = []
+
+            if not images:
+                logger.debug("카메라 슬라이드쇼: 사진 없음 — 대기 중")
+                for _ in range(5):
+                    if not self._running:
+                        return
+                    time.sleep(1)
+                continue
+
+            logger.info(f"카메라 슬라이드쇼: {len(images)}장 / {show_sec}초씩")
+
+            # ── 사진 순환 ─────────────────────────────────────
+            for img_path in images:
+                if not self._running:
+                    return
+                if not self.config.get("camera", {}).get("enabled", False):
+                    break
+
+                if not prepare_image(img_path, cam_path):
+                    continue
+
+                self._showing_camera = True
+                try:
+                    with self._push_lock:
+                        self.push_client.push_image(cam_path)
+                    logger.info(
+                        f"카메라: {os.path.basename(img_path)} ({show_sec}초)"
+                    )
+                except Exception as e:
+                    logger.error(f"카메라 슬라이드쇼 Push 실패: {e}")
+                    self._showing_camera = False
+                    continue
+
+                for _ in range(show_sec):
+                    if not self._running:
+                        self._showing_camera = False
+                        return
+                    if not self.config.get("camera", {}).get("enabled", False):
+                        self._showing_camera = False
+                        break
+                    time.sleep(1)
+
+                self._showing_camera = False
+
     # ── 스케줄 등록 ───────────────────────────────────────────
     def setup_schedule(self):
         clock_interval   = self.config.get("refresh_interval_sec", 60)
@@ -483,10 +581,20 @@ class WeatherClockScheduler:
         else:
             logger.info("콘솔 표시 비활성화 (config: console.enabled=false)")
 
+        # 카메라 슬라이드쇼 스레드
+        if self.config.get("camera", {}).get("enabled", False):
+            self._camera_thread = threading.Thread(
+                target=self._camera_loop, daemon=True, name="camera"
+            )
+            self._camera_thread.start()
+        else:
+            logger.info("카메라 슬라이드쇼 비활성화 (config: camera.enabled=false)")
+
     # ── 정지 ──────────────────────────────────────────────────
     def stop(self):
         self._running           = False
         self._showing_cpu       = False
         self._showing_slideshow = False
         self._showing_console   = False
+        self._showing_camera    = False
         schedule.clear()
