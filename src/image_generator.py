@@ -1,235 +1,211 @@
 # src/image_generator.py
-# Pillow 기반 240×240 날씨+시계 이미지 생성 엔진
+# GeekMagic 240×240 네온 애니메이션 스타일 날씨 + 시계 렌더러
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import datetime
 import pytz
 import os
 import logging
 
 logger = logging.getLogger(__name__)
-
 KST = pytz.timezone("Asia/Seoul")
+SIZE = 240
 
-# ── 색상 팔레트 ──────────────────────────────────────────────
 C = {
-    # 배경 그라디언트
-    "bg_top":      (12, 18, 42),
-    "bg_bottom":   (25, 35, 80),
-    # 헤더 바
-    "header_bg":   (0, 80, 160),
-    "header_text": (255, 255, 255),
-    # 시간
-    "time_main":   (255, 220, 50),
-    "time_sub":    (180, 190, 220),
-    # 날씨
-    "temp_main":   (255, 130, 80),
-    "temp_feels":  (180, 180, 200),
-    "weather_desc":(140, 210, 255),
-    # 습도/풍속
-    "info_label":  (120, 130, 160),
-    "info_value":  (200, 210, 240),
-    # 구분선
-    "divider":     (40, 55, 100),
-    # 푸터
-    "footer_bg":   (15, 22, 55),
-    "footer_text": (100, 110, 160),
-    # 날씨 아이콘 배경
-    "icon_bg":     (20, 40, 90),
+    "black": (2, 3, 8),
+    "panel": (8, 11, 22),
+    "cyan": (40, 245, 255),
+    "pink": (255, 62, 176),
+    "violet": (185, 120, 255),
+    "yellow": (255, 226, 88),
+    "white": (244, 249, 255),
+    "muted": (126, 150, 178),
+    "blue": (54, 128, 255),
 }
 
-# ── 폰트 경로 ─────────────────────────────────────────────────
-ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "fonts")
 SYSTEM_FONTS = [
+    "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
     "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-    "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
 ]
 
 
 def _get_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
-    """시스템 폰트 자동 탐색 후 로드"""
     for path in SYSTEM_FONTS:
         if os.path.exists(path):
             try:
                 return ImageFont.truetype(path, size)
             except Exception:
-                continue
-    # 폴백: PIL 기본 폰트
+                pass
     return ImageFont.load_default()
 
 
-def _draw_bg(draw: ImageDraw.Draw, width=240, height=240):
-    """세로 그라디언트 배경"""
-    r0, g0, b0 = C["bg_top"]
-    r1, g1, b1 = C["bg_bottom"]
-    for y in range(height):
-        t = y / height
-        r = int(r0 + (r1 - r0) * t)
-        g = int(g0 + (g1 - g0) * t)
-        b = int(b0 + (b1 - b0) * t)
-        draw.line([(0, y), (width - 1, y)], fill=(r, g, b))
+def _text_center(draw, text, y, font, fill, width=SIZE):
+    box = draw.textbbox((0, 0), text, font=font)
+    x = (width - (box[2] - box[0])) // 2
+    draw.text((x, y), text, font=font, fill=fill)
 
 
-def _centered_text(draw, text, y, font, color, width=240):
-    """텍스트 중앙 정렬"""
-    bbox = draw.textbbox((0, 0), text, font=font)
-    w = bbox[2] - bbox[0]
-    x = (width - w) // 2
-    draw.text((x, y), text, fill=color, font=font)
-    return bbox[3] - bbox[1]  # 텍스트 높이 반환
+def _glow_text(img, xy, text, font, color, radius=5, anchor=None):
+    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.text(xy, text, font=font, fill=(*color, 210), anchor=anchor)
+    blurred = glow.filter(ImageFilter.GaussianBlur(radius))
+    img.alpha_composite(blurred)
+    ImageDraw.Draw(img).text(xy, text, font=font, fill=(*color, 255), anchor=anchor)
+
+
+def _glow_line(img, points, color, width=1, radius=4):
+    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.line(points, fill=(*color, 190), width=max(width + 2, 3))
+    img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(radius)))
+    ImageDraw.Draw(img).line(points, fill=(*color, 255), width=width)
+
+
+def _background(img):
+    draw = ImageDraw.Draw(img)
+    for y in range(SIZE):
+        t = y / SIZE
+        draw.line((0, y, SIZE, y), fill=(2, int(3 + 4 * t), int(8 + 10 * t), 255))
+
+    # 애니메이션 오프닝을 연상시키는 네온 궤적
+    _glow_line(img, [(-15, 53), (62, 20), (146, 28), (255, -5)], C["violet"], 1, 6)
+    _glow_line(img, [(-12, 232), (52, 205), (146, 223), (255, 178)], C["cyan"], 1, 5)
+    _glow_line(img, [(155, 0), (187, 25), (224, 30), (250, 55)], C["pink"], 1, 5)
+
+    # 별빛/스파클 — 고정 좌표라 화면이 흔들리지 않음
+    stars = [(9, 45), (31, 90), (218, 67), (205, 101), (20, 170), (231, 159),
+             (72, 9), (151, 13), (97, 181), (183, 193), (12, 219)]
+    for i, (x, y) in enumerate(stars):
+        color = C["cyan"] if i % 3 == 0 else C["pink"] if i % 3 == 1 else C["white"]
+        draw.point((x, y), fill=(*color, 210))
+        if i % 4 == 0:
+            draw.line((x - 2, y, x + 2, y), fill=(*color, 150))
+            draw.line((x, y - 2, x, y + 2), fill=(*color, 150))
+
+
+def _panel(draw, box, outline=C["violet"], radius=12, fill=(7, 10, 20, 235)):
+    draw.rounded_rectangle(box, radius=radius, fill=fill, outline=(*outline, 170), width=1)
+
+
+def _weather_icon(img, center, code):
+    """이모지 폰트에 의존하지 않는 애니메이션 셀풍 날씨 아이콘."""
+    cx, cy = center
+    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+
+    is_night = str(code).endswith("n")
+    kind = str(code)[:2]
+    if kind == "01":
+        color = C["violet"] if is_night else C["yellow"]
+        gd.ellipse((cx - 13, cy - 13, cx + 13, cy + 13), fill=(*color, 220))
+        for a, b, c, d in [(-23, 0, -17, 0), (17, 0, 23, 0), (0, -23, 0, -17),
+                           (0, 17, 0, 23), (-17, -17, -13, -13), (13, 13, 17, 17),
+                           (-17, 17, -13, 13), (13, -13, 17, -17)]:
+            gd.line((cx + a, cy + b, cx + c, cy + d), fill=(*color, 230), width=2)
+    else:
+        # 구름
+        gd.ellipse((cx - 18, cy - 7, cx + 3, cy + 12), fill=(*C["white"], 230))
+        gd.ellipse((cx - 7, cy - 15, cx + 14, cy + 12), fill=(*C["white"], 230))
+        gd.rounded_rectangle((cx - 20, cy, cx + 20, cy + 14), radius=7, fill=(*C["white"], 230))
+        if kind in {"09", "10", "11"}:
+            for dx in (-12, 0, 12):
+                gd.line((cx + dx, cy + 18, cx + dx - 3, cy + 25), fill=(*C["cyan"], 255), width=2)
+        elif kind == "13":
+            for dx in (-10, 8):
+                gd.text((cx + dx, cy + 14), "*", font=_get_font(12), fill=(*C["cyan"], 255))
+
+    img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(7)))
+    img.alpha_composite(glow)
 
 
 def generate_weather_clock(weather: dict, config: dict) -> Image.Image:
-    """
-    날씨 + 시계 화면 생성
-    Returns: PIL Image (240×240 RGB)
-    """
-    img = Image.new("RGB", (240, 240))
+    img = Image.new("RGBA", (SIZE, SIZE), (*C["black"], 255))
+    _background(img)
     draw = ImageDraw.Draw(img)
-
-    # 배경
-    _draw_bg(draw)
-
     now = datetime.datetime.now(KST)
-    time_fmt = config.get("time_format", "24h")
 
-    # ── 폰트 로드 ──────────────────────────────────────────
-    font_city   = _get_font(13)
-    font_time   = _get_font(52, bold=True)
-    font_date   = _get_font(14)
-    font_temp   = _get_font(28, bold=True)
-    font_info   = _get_font(13)
-    font_small  = _get_font(11)
-    font_icon   = _get_font(30)
+    f_city = _get_font(11, True)
+    f_tiny = _get_font(9)
+    f_time = _get_font(48, True)
+    f_temp = _get_font(34, True)
+    f_desc = _get_font(11, True)
+    f_stat = _get_font(12, True)
 
-    # ── 헤더: 도시명 + 날씨 아이콘 ─────────────────────────
-    # 헤더 배경 (라운드 없이 심플)
-    draw.rectangle([0, 0, 239, 36], fill=C["header_bg"])
+    # 상단 캡슐
+    draw.rounded_rectangle((9, 8, 146, 31), radius=11, fill=(7, 14, 27, 235),
+                           outline=(*C["cyan"], 180), width=1)
+    draw.ellipse((16, 15, 22, 21), fill=(*C["pink"], 255))
+    city = str(weather.get("city", config.get("city", "SEOUL"))).upper()[:17]
+    draw.text((28, 13), city, font=f_city, fill=(*C["white"], 255))
+    draw.text((157, 13), now.strftime("%m.%d  %a").upper(), font=f_tiny, fill=(*C["muted"], 255))
 
-    city_name = weather.get("city", config.get("city", "Seoul"))
-    draw.text((10, 10), city_name, fill=C["header_text"], font=font_city)
+    # 메인 시계
+    time_str = now.strftime("%I:%M" if config.get("time_format") == "12h" else "%H:%M")
+    _glow_text(img, (120, 61), time_str, f_time, C["cyan"], 7, "mm")
+    if config.get("time_format") == "12h":
+        draw.text((200, 70), now.strftime("%p"), font=f_tiny, fill=(*C["pink"], 255))
+    draw.rounded_rectangle((84, 89, 156, 93), radius=2, fill=(*C["pink"], 180))
 
-    # 날씨 아이콘 + 설명 (헤더 우측)
-    icon = weather.get("icon", "🌡")
-    desc = weather.get("desc_ko", "")
-    draw.text((155, 10), f"{icon} {desc}", fill=(220, 235, 255), font=font_small)
+    # 날씨 카드
+    _panel(draw, (8, 101, 232, 176), C["violet"], 14)
+    draw.rounded_rectangle((17, 110, 72, 167), radius=14, fill=(14, 14, 34, 255),
+                           outline=(*C["pink"], 170), width=1)
+    _weather_icon(img, (45, 137), weather.get("icon_code", "01d"))
 
-    # ── 시간 표시 ───────────────────────────────────────────
-    if time_fmt == "12h":
-        time_str = now.strftime("%I:%M")
-        ampm = now.strftime("%p")
-    else:
-        time_str = now.strftime("%H:%M")
-        ampm = None
-
-    # 시간 그림자 효과
-    draw.text((61, 46), time_str, fill=(0, 0, 0, 80), font=font_time)
-    draw.text((60, 45), time_str, fill=C["time_main"], font=font_time)
-
-    if ampm:
-        draw.text((185, 55), ampm, fill=C["time_sub"], font=font_info)
-
-    # ── 날짜 ────────────────────────────────────────────────
-    WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"]
-    weekday = WEEKDAYS[now.weekday()]
-    date_str = now.strftime(f"%Y.%m.%d ({weekday})")
-    _centered_text(draw, date_str, 100, font_date, C["time_sub"])
-
-    # ── 구분선 ──────────────────────────────────────────────
-    draw.line([(20, 120), (220, 120)], fill=C["divider"], width=1)
-
-    # ── 온도 ────────────────────────────────────────────────
     temp = weather.get("temp", "--")
+    unit = "°C" if config.get("temp_unit", "metric") == "metric" else "°F"
+    _glow_text(img, (84, 108), f"{temp}{unit}", f_temp, C["yellow"], 5)
+    # 기본 설치 폰트에는 한글 글리프가 없어 영문 설명을 사용한다.
+    desc = str(weather.get("desc_en", "WEATHER")).upper()[:13]
+    draw.text((86, 147), desc, font=f_desc, fill=(*C["pink"], 255))
     feels = weather.get("feels_like", "--")
-    unit_sym = "°C" if config.get("temp_unit", "metric") == "metric" else "°F"
+    draw.text((171, 149), f"FEEL {feels}°", font=_get_font(10), fill=(*C["white"], 255))
 
-    temp_str = f"{temp}{unit_sym}"
-    # 온도 중앙 배치
-    _centered_text(draw, temp_str, 126, font_temp, C["temp_main"])
-
-    # 체감온도
-    feels_str = f"체감 {feels}{unit_sym}"
-    _centered_text(draw, feels_str, 158, font_small, C["temp_feels"])
-
-    # ── 구분선 ──────────────────────────────────────────────
-    draw.line([(20, 175), (220, 175)], fill=C["divider"], width=1)
-
-    # ── 습도 / 풍속 / 구름 ──────────────────────────────────
-    humidity = weather.get("humidity", "--")
-    wind = weather.get("wind_speed", "--")
-    clouds = weather.get("clouds", "--")
-
-    # 3열 레이아웃
-    col_w = 80
-    items = [
-        ("💧", f"{humidity}%",   "습도"),
-        ("💨", f"{wind}m/s",    "풍속"),
-        ("☁️", f"{clouds}%",    "구름"),
+    # 하단 3개 미니 카드
+    stats = [
+        ("HUM", f"{weather.get('humidity', '--')}%", C["cyan"]),
+        ("WIND", f"{weather.get('wind_speed', '--')}", C["pink"]),
+        ("CLOUD", f"{weather.get('clouds', '--')}%", C["violet"]),
     ]
-    for i, (icon_s, val, label) in enumerate(items):
-        x = 10 + i * col_w
-        draw.text((x + 2,  179), icon_s, fill=C["info_label"], font=font_small)
-        draw.text((x + 22, 179), val,    fill=C["info_value"], font=font_info)
-        draw.text((x + 22, 193), label,  fill=C["info_label"], font=font_small)
+    for i, (label, value, color) in enumerate(stats):
+        x0 = 8 + i * 76
+        _panel(draw, (x0, 183, x0 + 70, 228), color, 10, (6, 9, 18, 240))
+        draw.text((x0 + 8, 190), label, font=f_tiny, fill=(*C["muted"], 255))
+        draw.text((x0 + 8, 205), value, font=f_stat, fill=(*color, 255))
+        draw.ellipse((x0 + 55, 191, x0 + 60, 196), fill=(*color, 255))
 
-    # ── 푸터: 마지막 업데이트 시각 ──────────────────────────
-    draw.rectangle([0, 213, 239, 239], fill=C["footer_bg"])
-    updated = now.strftime("Updated %H:%M")
-    _centered_text(draw, updated, 221, font_small, C["footer_text"])
-
-    return img
+    draw.text((10, 231), "NEON WEATHER // LIVE", font=_get_font(7), fill=(*C["muted"], 180))
+    draw.text((188, 231), now.strftime("%H:%M"), font=_get_font(7), fill=(*C["pink"], 210))
+    return img.convert("RGB")
 
 
-def generate_loading_screen(message: str = "연결 중...") -> Image.Image:
-    """WiFi 연결 대기 / 로딩 화면"""
-    img = Image.new("RGB", (240, 240))
-    draw = ImageDraw.Draw(img)
-    _draw_bg(draw)
-
-    font_big   = _get_font(18, bold=True)
-    font_small = _get_font(13)
-
-    _centered_text(draw, "🌤", 70, _get_font(48), (200, 220, 255))
-    _centered_text(draw, "Weather Clock", 130, font_big, (200, 210, 240))
-    _centered_text(draw, message, 158, font_small, (120, 130, 160))
-
-    now = datetime.datetime.now(KST)
-    _centered_text(draw, now.strftime("%H:%M:%S"), 190, font_small, (80, 90, 130))
-
-    return img
+def generate_loading_screen(message: str = "CONNECTING...") -> Image.Image:
+    img = Image.new("RGBA", (SIZE, SIZE), (*C["black"], 255))
+    _background(img)
+    _glow_text(img, (120, 91), "◇", _get_font(55, True), C["cyan"], 8, "mm")
+    _glow_text(img, (120, 139), "WEATHER LINK", _get_font(17, True), C["pink"], 5, "mm")
+    ImageDraw.Draw(img).text((120, 169), message, font=_get_font(11), fill=(*C["muted"], 255), anchor="mm")
+    return img.convert("RGB")
 
 
-def generate_error_screen(error_msg: str = "오류 발생") -> Image.Image:
-    """에러 화면"""
-    img = Image.new("RGB", (240, 240), color=(40, 10, 10))
-    draw = ImageDraw.Draw(img)
-
-    font_big   = _get_font(16, bold=True)
-    font_small = _get_font(12)
-
-    _centered_text(draw, "⚠️", 60, _get_font(40), (255, 80, 80))
-    _centered_text(draw, "오류", 110, font_big, (255, 100, 100))
-
-    # 에러 메시지 (긴 경우 줄바꿈)
-    words = error_msg[:40]
-    _centered_text(draw, words, 140, font_small, (200, 150, 150))
-
-    now = datetime.datetime.now(KST)
-    _centered_text(draw, now.strftime("%H:%M"), 200, font_small, (120, 80, 80))
-
-    return img
+def generate_error_screen(error_msg: str = "SYSTEM ERROR") -> Image.Image:
+    img = Image.new("RGBA", (SIZE, SIZE), (*C["black"], 255))
+    _background(img)
+    _glow_text(img, (120, 88), "!", _get_font(64, True), C["pink"], 9, "mm")
+    _glow_text(img, (120, 139), "SIGNAL LOST", _get_font(18, True), C["pink"], 5, "mm")
+    ImageDraw.Draw(img).text((120, 170), str(error_msg)[:28], font=_get_font(10), fill=(*C["muted"], 255), anchor="mm")
+    return img.convert("RGB")
 
 
-def save_image(img: Image.Image, path: str, quality: int = 88) -> bool:
-    """이미지를 JPEG로 저장"""
+def save_image(img: Image.Image, path: str, quality: int = 92) -> bool:
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        img.save(path, "JPEG", quality=quality, optimize=True)
-        logger.debug(f"이미지 저장: {path}")
+        img.save(path, "JPEG", quality=quality, optimize=True, subsampling=0)
+        logger.debug("이미지 저장: %s", path)
         return True
     except Exception as e:
-        logger.error(f"이미지 저장 실패: {e}")
+        logger.error("이미지 저장 실패: %s", e)
         return False
