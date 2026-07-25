@@ -6,12 +6,41 @@ import json
 import os
 import logging
 import datetime
+import secrets
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
 
 app = Flask(__name__, template_folder="../templates")
+
+
+@app.before_request
+def require_web_auth():
+    """모든 웹 UI/API 요청에 HTTP Basic 인증을 적용한다."""
+    config = load_config()
+    auth_cfg = config.get("web_auth", {})
+    username = str(auth_cfg.get("username", "admin"))
+    password = str(auth_cfg.get("password", ""))
+
+    if not password:
+        return ("web_auth.password가 설정되지 않았습니다", 503)
+
+    auth = request.authorization
+    valid = bool(
+        auth
+        and secrets.compare_digest(
+            (auth.username or "").encode("utf-8"), username.encode("utf-8")
+        )
+        and secrets.compare_digest(
+            (auth.password or "").encode("utf-8"), password.encode("utf-8")
+        )
+    )
+    if not valid:
+        return ("인증이 필요합니다", 401,
+                {"WWW-Authenticate": 'Basic realm="Weather Clock"'})
+
 
 # 전역 참조 (main.py에서 주입)
 _scheduler   = None
@@ -48,6 +77,10 @@ def get_default_config() -> dict:
         "weather_interval_min": 10,
         "push_timeout_sec":     8,
         "push_retries":         3,
+        "web_auth": {
+            "username": "admin",
+            "password": "",
+        },
         "night_mode": {
             "enabled": False,
             "start":   "23:00",
@@ -79,6 +112,7 @@ def get_default_config() -> dict:
         "camera": {
             "enabled":       False,
             "server_url":    "http://192.168.x.x:5050",
+            "api_token":     "",
             "show_sec":      10,
             "restore_theme": 1,
         },
@@ -259,13 +293,35 @@ def slideshow_info():
 
 @app.route("/preview")
 def preview():
-    """현재 생성된 이미지 미리보기"""
-    cache_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "cache", "current.jpg"
-    )
-    if os.path.exists(cache_path):
-        return send_file(cache_path, mimetype="image/jpeg")
-    return "이미지 없음", 404
+    """현재 코드로 날씨/CPU 화면을 즉시 렌더링해 미리보기한다."""
+    kind = request.args.get("type", "weather")
+    try:
+        if kind == "cpu":
+            from src.cpu_image import generate_cpu_image
+            image = generate_cpu_image()
+        else:
+            from src.image_generator import generate_weather_clock
+            config = load_config()
+            weather = getattr(_scheduler, "_weather_cache", None) if _scheduler else None
+            if weather is None and _scheduler:
+                weather = _scheduler.weather_api.get_weather()
+            if weather is None:
+                weather = {
+                    "city": config.get("city", "Seoul"),
+                    "temp": "--", "humidity": "--", "wind_speed": "--",
+                    "icon_code": "01d", "desc_en": "weather",
+                }
+            image = generate_weather_clock(weather, config)
+
+        output = BytesIO()
+        image.save(output, "JPEG", quality=93, optimize=True, subsampling=0)
+        output.seek(0)
+        response = send_file(output, mimetype="image/jpeg", max_age=0)
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        return response
+    except Exception as exc:
+        logger.error("미리보기 생성 실패: %s", exc)
+        return "미리보기 생성 실패", 500
 
 
 def _get_camera_dir() -> str:
@@ -274,10 +330,12 @@ def _get_camera_dir() -> str:
 
 def _get_camera_client():
     config     = load_config()
-    server_url = config.get("camera", {}).get("server_url", "")
+    camera_cfg = config.get("camera", {})
+    server_url = camera_cfg.get("server_url", "")
+    api_token  = camera_cfg.get("api_token", "")
     save_dir   = _get_camera_dir()
     from src.camera_client import CameraClient
-    return CameraClient(server_url, save_dir)
+    return CameraClient(server_url, save_dir, api_token=api_token)
 
 
 @app.route("/camera/status")

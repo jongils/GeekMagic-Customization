@@ -3,11 +3,12 @@
 # Pi 125에서 실행: venv/bin/python3 camera_server.py
 # 환경변수: CAMERA_DEV (기본 /dev/video0), PORT (기본 5050)
 
-from flask import Flask, jsonify, send_file, abort
+from flask import Flask, jsonify, send_file, abort, request
 import subprocess
 import os
 import datetime
 import logging
+import secrets
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,8 +22,19 @@ CAPTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "captures
 CAMERA_DEV  = os.environ.get("CAMERA_DEV", "/dev/video0")
 CAPTURE_RES = os.environ.get("CAPTURE_RES", "1280x720")
 PORT        = int(os.environ.get("PORT", 5050))
+API_TOKEN   = os.environ.get("CAMERA_API_TOKEN", "")
 
 os.makedirs(CAPTURE_DIR, exist_ok=True)
+
+
+@app.before_request
+def require_api_token():
+    """모든 카메라 API 요청에 공유 토큰 인증을 적용한다."""
+    if not API_TOKEN:
+        return jsonify({"status": "error", "message": "CAMERA_API_TOKEN 미설정"}), 503
+    supplied = request.headers.get("X-API-Key", "")
+    if not secrets.compare_digest(supplied, API_TOKEN):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
 
 
 def _safe_filename(filename: str) -> bool:

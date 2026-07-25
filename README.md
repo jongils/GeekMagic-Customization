@@ -162,6 +162,19 @@ venv/bin/python3 main.py
 ```
 웹 설정 UI: `http://[라즈베리파이 IP]:8080`
 
+웹 UI와 API는 HTTP Basic 인증을 요구합니다. `config.json`의 다음 값을 반드시 긴 임의 문자열로 변경하세요.
+
+```json
+"web_auth": {
+  "username": "admin",
+  "password": "긴-임의-비밀번호"
+}
+```
+
+콘솔 화면은 보안을 위해 `src/console_image.py`의 `ALLOWED_COMMANDS`에 등록된 명령만 실행하며, 셸 문자열을 직접 실행하지 않습니다.
+
+카메라 서버는 `CAMERA_API_TOKEN` 환경변수와 클라이언트의 `camera.api_token` 값이 같아야 합니다. `camera_server/install.sh` 실행 시 토큰을 입력하고, 동일한 값을 메인 장치의 `config.json`에 설정하세요.
+
 모든 기능(슬라이드쇼, CPU 모니터, 콘솔 출력)은 웹 UI 또는 `config.json`으로 켜고 끌 수 있습니다.
 
 | 동작 | 반영 시점 |
@@ -369,6 +382,10 @@ To find your device IP, check your router's admin page or run `arp -a`.
 venv/bin/python3 main.py
 ```
 Web config UI: `http://[raspberry-pi-ip]:8080`
+
+The web UI and APIs require HTTP Basic authentication configured through `web_auth` in `config.json`. Use a long random password. Console rendering only executes commands explicitly registered in `src/console_image.py`'s `ALLOWED_COMMANDS`; arbitrary shell strings are rejected.
+
+The camera server requires `CAMERA_API_TOKEN`. It must match `camera.api_token` in the main service's `config.json`; `camera_server/install.sh` prompts for it during installation.
 
 All features (slideshow, CPU monitor, console output) can be toggled via the web UI or `config.json`.
 

@@ -28,6 +28,14 @@ echo ""
 read -rp "USB 카메라 장치 경로 [기본값: /dev/video0]: " CAM_DEV
 CAM_DEV="${CAM_DEV:-/dev/video0}"
 
+# API 인증 토큰 설정 (필수)
+read -rsp "카메라 API 토큰 입력: " CAMERA_API_TOKEN
+echo ""
+if [ -z "$CAMERA_API_TOKEN" ]; then
+    echo "❌ 카메라 API 토큰은 비워둘 수 없습니다"
+    exit 1
+fi
+
 # venv 생성
 if [ ! -d "$VENV_DIR" ]; then
     echo "▶ 가상환경 생성 중..."
@@ -48,6 +56,7 @@ User=$SERVICE_USER
 WorkingDirectory=$PROJECT_DIR
 Environment="CAMERA_DEV=$CAM_DEV"
 Environment="PORT=5050"
+Environment="CAMERA_API_TOKEN=$CAMERA_API_TOKEN"
 ExecStart=$VENV_DIR/bin/python3 $PROJECT_DIR/camera_server.py
 Restart=on-failure
 RestartSec=5

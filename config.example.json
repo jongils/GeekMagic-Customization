@@ -9,6 +9,10 @@
   "push_timeout_sec": 8,
   "push_retries": 3,
   "web_port": 8080,
+  "web_auth": {
+    "username": "admin",
+    "password": "CHANGE_ME_TO_A_LONG_RANDOM_PASSWORD"
+  },
   "night_mode": {
     "enabled": false,
     "start": "23:00",
@@ -40,6 +44,7 @@
   "camera": {
     "enabled": false,
     "server_url": "http://192.168.x.x:5050",
+    "api_token": "CHANGE_ME_TO_THE_CAMERA_API_TOKEN",
     "show_sec": 10,
     "restore_theme": 1
   }
