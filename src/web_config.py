@@ -2,6 +2,7 @@
 # Flask 기반 웹 설정 UI 서버
 
 from flask import Flask, request, jsonify, render_template, redirect, url_for, send_file
+from werkzeug.security import generate_password_hash, check_password_hash
 import json
 import os
 import logging
@@ -22,10 +23,20 @@ def require_web_auth():
     config = load_config()
     auth_cfg = config.get("web_auth", {})
     username = str(auth_cfg.get("username", "admin"))
-    password = str(auth_cfg.get("password", ""))
+    password_hash = str(auth_cfg.get("password_hash", ""))
 
-    if not password:
-        return ("web_auth.password가 설정되지 않았습니다", 503)
+    # 평문 password로 설정된 구버전 config.json을 해시로 자동 마이그레이션
+    legacy_password = auth_cfg.get("password", "")
+    if not password_hash and legacy_password:
+        password_hash = generate_password_hash(legacy_password)
+        auth_cfg["password_hash"] = password_hash
+        auth_cfg.pop("password", None)
+        config["web_auth"] = auth_cfg
+        save_config(config)
+        logger.info("web_auth.password를 해시로 마이그레이션했습니다")
+
+    if not password_hash:
+        return ("web_auth.password_hash가 설정되지 않았습니다", 503)
 
     auth = request.authorization
     valid = bool(
@@ -33,9 +44,7 @@ def require_web_auth():
         and secrets.compare_digest(
             (auth.username or "").encode("utf-8"), username.encode("utf-8")
         )
-        and secrets.compare_digest(
-            (auth.password or "").encode("utf-8"), password.encode("utf-8")
-        )
+        and check_password_hash(password_hash, auth.password or "")
     )
     if not valid:
         return ("인증이 필요합니다", 401,
@@ -79,7 +88,7 @@ def get_default_config() -> dict:
         "push_retries":         3,
         "web_auth": {
             "username": "admin",
-            "password": "",
+            "password_hash": "",
         },
         "night_mode": {
             "enabled": False,

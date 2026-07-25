@@ -11,7 +11,7 @@
   "web_port": 8080,
   "web_auth": {
     "username": "admin",
-    "password": "CHANGE_ME_TO_A_LONG_RANDOM_PASSWORD"
+    "password_hash": "RUN hash_password.py AND PASTE THE OUTPUT HERE"
   },
   "night_mode": {
     "enabled": false,
