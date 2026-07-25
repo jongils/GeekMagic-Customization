@@ -6,12 +6,36 @@ import json
 import os
 import logging
 import datetime
+import secrets
 
 logger = logging.getLogger(__name__)
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
 
 app = Flask(__name__, template_folder="../templates")
+
+
+@app.before_request
+def require_web_auth():
+    """모든 웹 UI/API 요청에 HTTP Basic 인증을 적용한다."""
+    config = load_config()
+    auth_cfg = config.get("web_auth", {})
+    username = str(auth_cfg.get("username", "admin"))
+    password = str(auth_cfg.get("password", ""))
+
+    if not password:
+        return ("web_auth.password가 설정되지 않았습니다", 503)
+
+    auth = request.authorization
+    valid = bool(
+        auth
+        and secrets.compare_digest(auth.username or "", username)
+        and secrets.compare_digest(auth.password or "", password)
+    )
+    if not valid:
+        return ("인증이 필요합니다", 401,
+                {"WWW-Authenticate": 'Basic realm="Weather Clock"'})
+
 
 # 전역 참조 (main.py에서 주입)
 _scheduler   = None
@@ -48,6 +72,10 @@ def get_default_config() -> dict:
         "weather_interval_min": 10,
         "push_timeout_sec":     8,
         "push_retries":         3,
+        "web_auth": {
+            "username": "admin",
+            "password": "",
+        },
         "night_mode": {
             "enabled": False,
             "start":   "23:00",
@@ -79,6 +107,7 @@ def get_default_config() -> dict:
         "camera": {
             "enabled":       False,
             "server_url":    "http://192.168.x.x:5050",
+            "api_token":     "",
             "show_sec":      10,
             "restore_theme": 1,
         },
@@ -274,10 +303,12 @@ def _get_camera_dir() -> str:
 
 def _get_camera_client():
     config     = load_config()
-    server_url = config.get("camera", {}).get("server_url", "")
+    camera_cfg = config.get("camera", {})
+    server_url = camera_cfg.get("server_url", "")
+    api_token  = camera_cfg.get("api_token", "")
     save_dir   = _get_camera_dir()
     from src.camera_client import CameraClient
-    return CameraClient(server_url, save_dir)
+    return CameraClient(server_url, save_dir, api_token=api_token)
 
 
 @app.route("/camera/status")

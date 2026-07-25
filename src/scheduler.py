@@ -71,7 +71,8 @@ class WeatherClockScheduler:
         if self.config.get("slideshow", {}).get("enabled", False):
             logger.debug("슬라이드쇼 모드 — 날씨 Push 건너뜀")
             return
-        if self._restore_theme() != 0:
+        if (self.config.get("cpu_monitor", {}).get("enabled", False)
+                and self._restore_theme() != 0):
             logger.debug("내장 테마 모드 — 날씨 Push 건너뜀")
             return
         if self._showing_cpu or self._showing_slideshow or self._showing_console or self._showing_camera:

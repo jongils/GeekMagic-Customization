@@ -26,6 +26,17 @@ MAX_LINES  = USABLE_H // LINE_H          # ≈ 18줄
 # 한 줄 최대 문자 수 (폰트 너비 기준 근사)
 CHARS_PER_LINE = (IMG_W - PADDING * 2) // 6   # ≈ 39자
 
+# 웹 UI 입력을 셸에 직접 넘기지 않는다. 표시 가능한 명령을 명시적으로
+# 등록하고 각 프로세스를 shell=False로 실행한다.
+SYSTEM_SUMMARY_COMMAND = "vcgencmd measure_temp && free -h && df -h /"
+ALLOWED_COMMANDS = {
+    SYSTEM_SUMMARY_COMMAND: [
+        ["vcgencmd", "measure_temp"],
+        ["free", "-h"],
+        ["df", "-h", "/"],
+    ],
+}
+
 
 def _get_font(path: str, size: int) -> ImageFont.FreeTypeFont:
     try:
@@ -35,19 +46,29 @@ def _get_font(path: str, size: int) -> ImageFont.FreeTypeFont:
 
 
 def run_command(command: str, timeout: int = 8) -> str:
-    """셸 명령어를 실행하고 출력(stdout+stderr)을 반환."""
+    """허용 목록에 등록된 명령만 shell=False로 실행한다."""
+    commands = ALLOWED_COMMANDS.get(command)
+    if commands is None:
+        logger.warning("허용되지 않은 콘솔 명령 실행 차단")
+        return "[허용되지 않은 명령]"
+
+    outputs = []
     try:
-        result = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        output = result.stdout
-        if result.returncode != 0 and result.stderr:
-            output += result.stderr
-        return output
+        for argv in commands:
+            result = subprocess.run(
+                argv,
+                shell=False,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            output = result.stdout
+            if result.returncode != 0 and result.stderr:
+                output += result.stderr
+            outputs.append(output.rstrip())
+        return "\n".join(filter(None, outputs))
+    except FileNotFoundError as e:
+        return f"[명령 없음: {e.filename}]"
     except subprocess.TimeoutExpired:
         return f"[타임아웃: {timeout}초 초과]"
     except Exception as e:

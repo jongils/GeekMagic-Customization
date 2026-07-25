@@ -11,19 +11,24 @@ logger = logging.getLogger(__name__)
 
 
 class CameraClient:
-    def __init__(self, server_url: str, save_dir: str, timeout: int = 20):
+    def __init__(self, server_url: str, save_dir: str, timeout: int = 20,
+                 api_token: str = ""):
         parsed         = urllib.parse.urlparse(server_url)
         self.host      = parsed.hostname or "192.168.x.x"
         self.port      = parsed.port or 5050
         self.save_dir  = save_dir
         self.timeout   = timeout
+        self.api_token = api_token
         os.makedirs(save_dir, exist_ok=True)
+
+    def _headers(self) -> dict:
+        return {"X-API-Key": self.api_token} if self.api_token else {}
 
     # ── 내부 HTTP 헬퍼 ────────────────────────────────────────
 
     def _get(self, path: str) -> tuple[int, bytes]:
         conn = http.client.HTTPConnection(self.host, self.port, timeout=self.timeout)
-        conn.request("GET", path)
+        conn.request("GET", path, headers=self._headers())
         resp = conn.getresponse()
         data = resp.read()
         conn.close()
@@ -31,7 +36,8 @@ class CameraClient:
 
     def _post(self, path: str) -> tuple[int, dict]:
         conn = http.client.HTTPConnection(self.host, self.port, timeout=self.timeout)
-        conn.request("POST", path, headers={"Content-Length": "0"})
+        headers = {"Content-Length": "0", **self._headers()}
+        conn.request("POST", path, headers=headers)
         resp = conn.getresponse()
         data = json.loads(resp.read().decode(errors="ignore"))
         conn.close()
@@ -39,7 +45,7 @@ class CameraClient:
 
     def _delete(self, path: str) -> int:
         conn = http.client.HTTPConnection(self.host, self.port, timeout=self.timeout)
-        conn.request("DELETE", path)
+        conn.request("DELETE", path, headers=self._headers())
         resp = conn.getresponse()
         resp.read()
         conn.close()
