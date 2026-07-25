@@ -29,8 +29,12 @@ def require_web_auth():
     auth = request.authorization
     valid = bool(
         auth
-        and secrets.compare_digest(auth.username or "", username)
-        and secrets.compare_digest(auth.password or "", password)
+        and secrets.compare_digest(
+            (auth.username or "").encode("utf-8"), username.encode("utf-8")
+        )
+        and secrets.compare_digest(
+            (auth.password or "").encode("utf-8"), password.encode("utf-8")
+        )
     )
     if not valid:
         return ("인증이 필요합니다", 401,

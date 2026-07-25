@@ -33,6 +33,11 @@ class WebAuthTests(unittest.TestCase):
         response = self.client.get("/status", headers={"Authorization": f"Basic {token}"})
         self.assertEqual(response.status_code, 200)
 
+    def test_non_ascii_wrong_password_is_rejected_without_server_error(self):
+        token = base64.b64encode("admin:잘못된암호".encode("utf-8")).decode()
+        response = self.client.get("/status", headers={"Authorization": f"Basic {token}"})
+        self.assertEqual(response.status_code, 401)
+
 
 class ConsoleCommandTests(unittest.TestCase):
     @patch("src.console_image.subprocess.run")
