@@ -1,12 +1,13 @@
-venv/
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+
+# Python (diag scripts)
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
+venv/
+
+# Logs / cache
+*.log
 cache/
 logs/
-*.log
-.env
-.claude/
-/push_client.py
-config.json
