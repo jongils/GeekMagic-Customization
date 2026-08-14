@@ -44,30 +44,30 @@ static void renderTheme4(const struct tm &t) {
     if (t.tm_hour != _lastHour || t.tm_min != _lastMin) {
         char buf[6];
         snprintf(buf, sizeof(buf), "%02d:%02d", t.tm_hour, t.tm_min);
-        displayRect(0, 70, DISPLAY_W, 80, TFT_BLACK);
-        displayTextCentre(0, 75, DISPLAY_W, buf, COL_CYAN, 5);
+        displayRect(0, 72, DISPLAY_W, 76, TFT_BLACK);
+        displayTextCentre(0, 76, DISPLAY_W, buf, COL_CYAN, 4);
         _lastHour = t.tm_hour;
         _lastMin  = t.tm_min;
     }
 
-    // Seconds (smaller, below)
+    // Seconds (smaller, below HH:MM)
     if (t.tm_sec != _lastSec) {
         char buf[4];
         snprintf(buf, sizeof(buf), ":%02d", t.tm_sec);
-        displayRect(0, 158, DISPLAY_W, 28, TFT_BLACK);
-        displayTextCentre(0, 158, DISPLAY_W, buf, COL_GREY, 2);
+        displayRect(0, 152, DISPLAY_W, 24, TFT_BLACK);
+        displayTextCentre(0, 152, DISPLAY_W, buf, COL_GREY, 2);
         _lastSec = t.tm_sec;
     }
 
-    // Date line (updates once per day)
+    // Date line — bottom of screen where it's always visible
     if (t.tm_wday != _lastWday) {
         char dateBuf[32];
         snprintf(dateBuf, sizeof(dateBuf), "%d.%02d.%02d %s",
                  1900 + t.tm_year, t.tm_mon + 1, t.tm_mday,
                  WDAY_EN[t.tm_wday]);
-        displayRect(0, 30, DISPLAY_W, 36, TFT_BLACK);
-        displayTextCentre(0, 35, DISPLAY_W, dateBuf, COL_WHITE, 1);
-        displayHLine(20, 65, DISPLAY_W - 40, COL_GREY);
+        displayHLine(20, 183, DISPLAY_W - 40, COL_GREY);
+        displayRect(0, 188, DISPLAY_W, 24, TFT_BLACK);
+        displayTextCentre(0, 190, DISPLAY_W, dateBuf, COL_WHITE, 1);
         _lastWday = t.tm_wday;
     }
 }
