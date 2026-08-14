@@ -1,8 +1,9 @@
 #include "jpeg_display.h"
 #include "display.h"
 #include "config.h"
-#include <JPEGDEC.h>
+#include <FS.h>
 #include <LittleFS.h>
+#include <JPEGDEC.h>
 
 static JPEGDEC jpeg;
 

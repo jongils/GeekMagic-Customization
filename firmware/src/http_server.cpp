@@ -4,9 +4,11 @@
 #include "jpeg_display.h"
 #include "display.h"
 #include "weather_theme.h"
+#include <FS.h>
+#include <LittleFS.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
-#include <Preferences.h>
+#include <ArduinoJson.h>
 
 static ESP8266WebServer   server(80);
 static ESP8266HTTPUpdateServer updater;
@@ -30,19 +32,23 @@ bool httpConsumeImageReady() {
 // ── persistence ───────────────────────────────────────────────────────────────
 
 static void saveState() {
-    Preferences prefs;
-    prefs.begin("state", false);
-    prefs.putUChar("theme",  _theme);
-    prefs.putUChar("brt",    _brightness);
-    prefs.end();
+    File f = LittleFS.open("/state.json", "w");
+    if (!f) return;
+    JsonDocument doc;
+    doc["theme"] = _theme;
+    doc["brt"]   = _brightness;
+    serializeJson(doc, f);
+    f.close();
 }
 
 static void loadState() {
-    Preferences prefs;
-    prefs.begin("state", true);
-    _theme      = prefs.getUChar("theme", THEME_WEATHER_CLOCK);
-    _brightness = prefs.getUChar("brt",   DEFAULT_BRIGHTNESS);
-    prefs.end();
+    File f = LittleFS.open("/state.json", "r");
+    if (!f) return;
+    JsonDocument doc;
+    deserializeJson(doc, f);
+    f.close();
+    _theme      = doc["theme"] | (int)THEME_WEATHER_CLOCK;
+    _brightness = doc["brt"]   | (int)DEFAULT_BRIGHTNESS;
 }
 
 // ── response helpers ──────────────────────────────────────────────────────────

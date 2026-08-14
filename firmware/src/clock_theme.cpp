@@ -61,7 +61,7 @@ static void renderTheme4(const struct tm &t) {
 
     // Date line (updates once per day)
     if (t.tm_wday != _lastWday) {
-        char dateBuf[24];
+        char dateBuf[32];
         snprintf(dateBuf, sizeof(dateBuf), "%d.%02d.%02d %s",
                  1900 + t.tm_year, t.tm_mon + 1, t.tm_mday,
                  WDAY_KR[t.tm_wday]);
@@ -87,7 +87,7 @@ static void renderTheme5(const struct tm &t) {
 
     // SS on line 2
     if (t.tm_sec != _lastSec) {
-        char buf[8];
+        char buf[12];
         snprintf(buf, sizeof(buf), "-- %02d --", t.tm_sec);
         displayRect(0, 135, DISPLAY_W, 36, TFT_BLACK);
         displayTextCentre(0, 138, DISPLAY_W, buf, COL_GREY, 2);
@@ -95,7 +95,7 @@ static void renderTheme5(const struct tm &t) {
     }
 
     if (t.tm_wday != _lastWday) {
-        char dateBuf[16];
+        char dateBuf[32];
         snprintf(dateBuf, sizeof(dateBuf), "%s  %04d/%02d/%02d",
                  WDAY_EN[t.tm_wday],
                  1900 + t.tm_year, t.tm_mon + 1, t.tm_mday);

@@ -1,5 +1,6 @@
 #include "filesystem.h"
 #include "config.h"
+#include <FS.h>
 #include <LittleFS.h>
 
 bool fsInit() {
@@ -16,8 +17,9 @@ bool fsInit() {
         LittleFS.mkdir(IMAGE_DIR);
     }
 
-    LOG("LittleFS OK. Free: %u bytes\n",
-        (unsigned)LittleFS.totalBytes() - (unsigned)LittleFS.usedBytes());
+    FSInfo info;
+    LittleFS.info(info);
+    LOG("LittleFS OK. Free: %u bytes\n", info.totalBytes - info.usedBytes);
     return true;
 }
 

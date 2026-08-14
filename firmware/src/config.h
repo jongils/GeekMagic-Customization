@@ -1,14 +1,10 @@
 #pragma once
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Phase 0: Pin mapping — confirm via flash dump or PCB tracing before flashing
-//
-//   esptool.py --port /dev/ttyUSB0 --baud 921600 \
-//     read_flash 0x0 0x400000 original_firmware.bin
-//   strings original_firmware.bin | grep -iE "st7789|ili9341|TFT_|DC|RST|CS"
-//
-// Most likely chip for 240×240 square TFT: ST7789
-// ESP-12F hardware SPI: MOSI=13, SCLK=14 (fixed by hardware)
+// Confirmed pin mapping — KAHD154010C10-V3 (ST7789V, 1.54" 240×240 IPS)
+//   MOSI=13, SCLK=14 (hardware SPI fixed)
+//   CS=15 (display측 미연결, ESP 부팅 스트랩용)
+//   DC=0, RST=2, BL=5 (PWM)
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Firmware identity (returned by /v.json)

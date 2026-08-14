@@ -6,7 +6,8 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
-#include <Preferences.h>
+#include <FS.h>
+#include <LittleFS.h>
 #include <time.h>
 
 // ── persisted config ──────────────────────────────────────────────────────────
@@ -18,19 +19,23 @@ void weatherSetConfig(const char *apiKey, const char *city) {
     strncpy(_apiKey, apiKey, sizeof(_apiKey) - 1);
     strncpy(_city,   city,   sizeof(_city)   - 1);
 
-    Preferences prefs;
-    prefs.begin("weather", false);
-    prefs.putString("apiKey", _apiKey);
-    prefs.putString("city",   _city);
-    prefs.end();
+    File f = LittleFS.open("/weather.json", "w");
+    if (!f) return;
+    JsonDocument doc;
+    doc["apiKey"] = _apiKey;
+    doc["city"]   = _city;
+    serializeJson(doc, f);
+    f.close();
 }
 
 static void weatherLoadConfig() {
-    Preferences prefs;
-    prefs.begin("weather", true);
-    String k = prefs.getString("apiKey", "");
-    String c = prefs.getString("city",   "Seoul");
-    prefs.end();
+    File f = LittleFS.open("/weather.json", "r");
+    if (!f) return;
+    JsonDocument doc;
+    deserializeJson(doc, f);
+    f.close();
+    String k = doc["apiKey"] | "";
+    String c = doc["city"]   | "Seoul";
     strncpy(_apiKey, k.c_str(), sizeof(_apiKey) - 1);
     strncpy(_city,   c.c_str(), sizeof(_city)   - 1);
 }
@@ -110,11 +115,11 @@ static bool fetchWeather() {
             strncpy(_wx.city,        doc["name"] | _city,              sizeof(_wx.city) - 1);
             strncpy(_wx.description, doc["weather"][0]["description"] | "N/A",
                     sizeof(_wx.description) - 1);
-            _wx.tempC     = (int16_t)((float)doc["main"]["temp"]       | 0.0f);
-            _wx.feelsLike = (int16_t)((float)doc["main"]["feels_like"] | 0.0f);
-            _wx.humidity  = (uint8_t)((int)doc["main"]["humidity"]     | 0);
-            _wx.windSpeed = (uint8_t)((float)doc["wind"]["speed"]      | 0.0f);
-            _wx.weatherId = (uint16_t)((int)doc["weather"][0]["id"]   | 800);
+            _wx.tempC     = (int16_t)(doc["main"]["temp"].as<float>());
+            _wx.feelsLike = (int16_t)(doc["main"]["feels_like"].as<float>());
+            _wx.humidity  = (uint8_t)(doc["main"]["humidity"].as<int>());
+            _wx.windSpeed = (uint8_t)(doc["wind"]["speed"].as<float>());
+            _wx.weatherId = doc["weather"][0]["id"] | 800;
             _wx.valid = true;
             ok = true;
             LOG("weatherFetch: OK temp=%d desc=%s\n", _wx.tempC, _wx.description);
