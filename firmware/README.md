@@ -3,7 +3,7 @@
 GeekMagic SmallTV Ultra의 공식 펌웨어를 **완전히 대체**하는 오픈소스 커스텀 펌웨어입니다.  
 ESP8266이 직접 날씨·시계를 렌더링하고, 기존 `push_client.py`와 100% 호환되는 HTTP API를 제공합니다.
 
-> 구현 현황·코드 구조 상세는 **[IMPLEMENTATION.md](IMPLEMENTATION.md)** 를 참고하세요.
+> 개발 환경 구축은 **[DEVELOPMENT.md](DEVELOPMENT.md)** · 구현 현황·코드 구조는 **[IMPLEMENTATION.md](IMPLEMENTATION.md)** 를 참고하세요.
 
 ---
 
