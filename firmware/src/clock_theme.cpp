@@ -64,7 +64,7 @@ static void renderTheme4(const struct tm &t) {
         char dateBuf[32];
         snprintf(dateBuf, sizeof(dateBuf), "%d.%02d.%02d %s",
                  1900 + t.tm_year, t.tm_mon + 1, t.tm_mday,
-                 WDAY_KR[t.tm_wday]);
+                 WDAY_EN[t.tm_wday]);
         displayRect(0, 30, DISPLAY_W, 36, TFT_BLACK);
         displayTextCentre(0, 35, DISPLAY_W, dateBuf, COL_WHITE, 1);
         displayHLine(20, 65, DISPLAY_W - 40, COL_GREY);
