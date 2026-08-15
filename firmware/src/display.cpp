@@ -56,6 +56,22 @@ void displayRoundRect(int16_t x, int16_t y, int16_t w, int16_t h,
     tft.drawRoundRect(x, y, w, h, r, colour);
 }
 
+void displayLine(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t colour) {
+    tft.drawLine(x1, y1, x2, y2, colour);
+}
+
+void displayVLine(int16_t x, int16_t y, int16_t len, uint16_t colour) {
+    tft.drawFastVLine(x, y, len, colour);
+}
+
+void displayCircle(int16_t x, int16_t y, int16_t r, uint16_t colour) {
+    tft.drawCircle(x, y, r, colour);
+}
+
+void displayCircleFill(int16_t x, int16_t y, int16_t r, uint16_t colour) {
+    tft.fillCircle(x, y, r, colour);
+}
+
 void displaySetBrightness(uint8_t level) {
 #if TFT_BL != -1
     analogWrite(TFT_BL, level);

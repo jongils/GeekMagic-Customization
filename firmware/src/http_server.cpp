@@ -1,231 +1,187 @@
-#include "http_server.h"
-#include "config.h"
-#include "filesystem.h"
-#include "jpeg_display.h"
-#include "display.h"
-#include "weather_theme.h"
-#include <FS.h>
-#include <LittleFS.h>
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ArduinoJson.h>
+#include "http_server.h"
+#include "config.h"
+#include "display.h"
+#include "draw_cmd.h"
+#include "filesystem.h"
+#include "jpeg_display.h"
+#include "clock_theme.h"
 
-static ESP8266WebServer   server(80);
+static ESP8266WebServer      server(80);
 static ESP8266HTTPUpdateServer updater;
 
-static uint8_t _theme      = THEME_WEATHER_CLOCK;
-static uint8_t _brightness = DEFAULT_BRIGHTNESS;
-static char    _imgPath[64] = UPLOAD_PATH;
-static bool    _imageReady  = false;
+// ── display mode state ────────────────────────────────────────────────────────
 
-// ── state accessors ───────────────────────────────────────────────────────────
+static DisplayMode    _mode          = MODE_CLOCK;
+static unsigned long  _modeSetAt     = 0;
+static unsigned long  _modeTimeoutMs = 0;   // 0 = no timeout
+static uint8_t        _brightness    = DEFAULT_BRIGHTNESS;
 
-uint8_t httpGetTheme()      { return _theme; }
-uint8_t httpGetBrightness() { return _brightness; }
+DisplayMode httpGetDisplayMode() { return _mode; }
+uint8_t     httpGetBrightness()  { return _brightness; }
 
-bool httpConsumeImageReady() {
-    bool v = _imageReady;
-    _imageReady = false;
-    return v;
+bool httpCheckModeTimeout() {
+    if (_mode != MODE_CLOCK && _modeTimeoutMs > 0) {
+        if (millis() - _modeSetAt >= _modeTimeoutMs) {
+            _mode          = MODE_CLOCK;
+            _modeTimeoutMs = 0;
+            return true;
+        }
+    }
+    return false;
 }
 
-// ── persistence ───────────────────────────────────────────────────────────────
-
-static void saveState() {
-    File f = LittleFS.open("/state.json", "w");
-    if (!f) return;
-    JsonDocument doc;
-    doc["theme"] = _theme;
-    doc["brt"]   = _brightness;
-    serializeJson(doc, f);
-    f.close();
+static void setMode(DisplayMode m, uint32_t timeoutSec = 0) {
+    _mode          = m;
+    _modeSetAt     = millis();
+    _modeTimeoutMs = timeoutSec > 0 ? timeoutSec * 1000UL : 0;
 }
 
-static void loadState() {
-    File f = LittleFS.open("/state.json", "r");
-    if (!f) return;
-    JsonDocument doc;
-    deserializeJson(doc, f);
-    f.close();
-    _theme      = doc["theme"] | (int)THEME_WEATHER_CLOCK;
-    _brightness = doc["brt"]   | (int)DEFAULT_BRIGHTNESS;
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+static void sendJSON(int code, const char *body) {
+    server.send(code, "application/json", body);
 }
 
-// ── response helpers ──────────────────────────────────────────────────────────
+// ── GET / — status ────────────────────────────────────────────────────────────
 
-static void sendJSON(const char *body) {
-    server.send(200, "application/json", body);
-}
-
-// ── route handlers ────────────────────────────────────────────────────────────
-
-// GET /
 static void handleRoot() {
-    server.send(200, "text/plain", "GeekMagic Custom Firmware OK");
+    const char *modeStr = (_mode == MODE_DRAW) ? "draw"
+                        : (_mode == MODE_JPEG) ? "jpeg"
+                        : "clock";
+    char buf[128];
+    snprintf(buf, sizeof(buf),
+        "{\"fw\":\"%s\",\"mode\":\"%s\",\"brt\":%d,\"heap\":%u}",
+        FW_VERSION, modeStr, _brightness, ESP.getFreeHeap());
+    sendJSON(200, buf);
 }
 
-// GET /v.json  →  {"m":"SmallTV-Ultra","v":"Custom-V1.0.0"}
-static void handleVersion() {
-    char buf[80];
-    snprintf(buf, sizeof(buf), "{\"m\":\"%s\",\"v\":\"%s\"}", FW_MODEL, FW_VERSION);
-    sendJSON(buf);
-}
+// ── GET /mode[?set=clock|draw] ────────────────────────────────────────────────
 
-// GET /app.json  →  {"theme":N}
-static void handleApp() {
-    char buf[24];
-    snprintf(buf, sizeof(buf), "{\"theme\":%d}", _theme);
-    sendJSON(buf);
-}
-
-// GET /img.json  →  {"img":"/image//weather_clock.jpg"}
-static void handleImg() {
-    char buf[80];
-    snprintf(buf, sizeof(buf), "{\"img\":\"%s\"}", _imgPath);
-    sendJSON(buf);
-}
-
-// GET /brt.json  →  {"brt":"N"}
-static void handleBrt() {
-    char buf[24];
-    snprintf(buf, sizeof(buf), "{\"brt\":\"%d\"}", _brightness);
-    sendJSON(buf);
-}
-
-// GET /set?theme=N  — switch theme
-//     /set?img=PATH — set image (only effective in theme 3)
-//     /set?brt=N    — set brightness
-static void handleSet() {
-    bool changed = false;
-
-    if (server.hasArg("theme")) {
-        uint8_t t = (uint8_t)server.arg("theme").toInt();
-        if (t >= 1 && t <= 7) {
-            _theme = t;
-            changed = true;
-            LOG("Theme -> %d\n", _theme);
-
-            // If switching to photo album, display the current image immediately
-            if (_theme == THEME_PHOTO_ALBUM && fsExists(_imgPath)) {
-                displayFill(TFT_BLACK);
-                jpegDisplayFile(_imgPath);
-            }
-        }
-    }
-
-    if (server.hasArg("img")) {
-        String p = server.arg("img");
-        strncpy(_imgPath, p.c_str(), sizeof(_imgPath) - 1);
-        LOG("img -> %s\n", _imgPath);
-
-        if (_theme == THEME_PHOTO_ALBUM && fsExists(_imgPath)) {
+static void handleMode() {
+    if (server.hasArg("set")) {
+        String s = server.arg("set");
+        if (s == "clock") {
+            setMode(MODE_CLOCK);
+            clockThemeInit();
             displayFill(TFT_BLACK);
-            jpegDisplayFile(_imgPath);
-            _imageReady = true;
+            sendJSON(200, "{\"mode\":\"clock\"}");
+        } else {
+            sendJSON(400, "{\"error\":\"unknown mode\"}");
         }
-    }
-
-    if (server.hasArg("brt")) {
-        _brightness = (uint8_t)server.arg("brt").toInt();
-        displaySetBrightness(_brightness);
-        changed = true;
-        LOG("Brightness -> %d\n", _brightness);
-    }
-
-    if (changed) saveState();
-    server.send(200, "text/plain", "OK");
-}
-
-// GET /delete?f=PATH
-static void handleDelete() {
-    if (!server.hasArg("f")) {
-        server.send(400, "text/plain", "missing f");
         return;
     }
-    String path = server.arg("f");
-    bool ok = fsDelete(path.c_str());
-    server.send(200, "text/plain", ok ? "OK" : "NOT FOUND");
+    // GET without param: return current mode
+    handleRoot();
 }
 
-// POST /doUpload?dir=/image/
-// multipart/form-data; field name "file"
-static void handleUpload() {
-    server.send(200, "text/plain", "OK");
-}
+// ── POST /draw ────────────────────────────────────────────────────────────────
+//
+// Body (JSON):
+// {
+//   "clear":   true,          // optional; default true
+//   "bg":      "black",       // optional background colour
+//   "timeout": 30,            // optional seconds → revert to clock
+//   "elements": [
+//     {"type":"text",   "x":120,"y":100,"text":"Hi","size":3,"color":"cyan","align":"center"},
+//     {"type":"rect",   "x":10,"y":10,"w":100,"h":50,"color":"blue","fill":true},
+//     {"type":"line",   "x1":0,"y1":75,"x2":240,"y2":75,"color":"grey"},
+//     {"type":"hline",  "x":20,"y":180,"len":200,"color":"white"},
+//     {"type":"vline",  "x":120,"y":80,"len":80,"color":"white"},
+//     {"type":"circle", "x":120,"y":120,"r":40,"color":"yellow","fill":false}
+//   ]
+// }
 
-static void handleUploadData() {
-    HTTPUpload &upload = server.upload();
-
-    // Accumulate chunks in a static buffer (JPEG is typically < 50 KB)
-    static uint8_t *_uploadBuf = nullptr;
-    static size_t   _uploadLen = 0;
-
-    if (upload.status == UPLOAD_FILE_START) {
-        _uploadLen = 0;
-        if (_uploadBuf) { free(_uploadBuf); _uploadBuf = nullptr; }
-        LOG("Upload START: %s (heap=%u)\n", upload.filename.c_str(), ESP.getFreeHeap());
-
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-        size_t newLen = _uploadLen + upload.currentSize;
-        uint8_t *tmp = (uint8_t *)realloc(_uploadBuf, newLen);
-        if (!tmp) {
-            LOG("Upload realloc failed at %u bytes\n", newLen);
-            return;
-        }
-        _uploadBuf = tmp;
-        memcpy(_uploadBuf + _uploadLen, upload.buf, upload.currentSize);
-        _uploadLen = newLen;
-
-    } else if (upload.status == UPLOAD_FILE_END) {
-        bool ok = (_uploadBuf && _uploadLen > 0)
-                  ? fsSaveUpload(_uploadBuf, _uploadLen)
-                  : false;
-        if (_uploadBuf) { free(_uploadBuf); _uploadBuf = nullptr; }
-        _uploadLen = 0;
-        LOG("Upload END: %s (%u bytes)\n", ok ? "saved" : "FAILED", upload.totalSize);
-    }
-}
-
-// POST /config  — JSON body: {"apiKey":"...","city":"..."}
-static void handleConfig() {
+static void handleDraw() {
     if (server.method() != HTTP_POST) {
         server.send(405, "text/plain", "POST only");
         return;
     }
-    JsonDocument doc;
-    DeserializationError err = deserializeJson(doc, server.arg("plain"));
-    if (err) {
-        server.send(400, "text/plain", "JSON parse error");
+    String body = server.arg("plain");
+    if (body.isEmpty()) {
+        sendJSON(400, "{\"error\":\"empty body\"}");
         return;
     }
-    const char *key  = doc["apiKey"] | "";
-    const char *city = doc["city"]   | "Seoul";
-    weatherSetConfig(key, city);
-    server.send(200, "application/json", "{\"ok\":true}");
+
+    // Peek at timeout before executing (drawExecute consumes the JSON)
+    JsonDocument meta;
+    deserializeJson(meta, body);
+    uint32_t timeoutSec = meta["timeout"] | 0;
+
+    if (!drawExecute(body)) {
+        sendJSON(400, "{\"error\":\"JSON parse error\"}");
+        return;
+    }
+
+    setMode(MODE_DRAW, timeoutSec);
+    sendJSON(200, "{\"ok\":true}");
+}
+
+// ── POST /display  — raw JPEG body ───────────────────────────────────────────
+//   (Phase 2: multipart via /doUpload also accepted for compat)
+
+static void handleDisplay() {
+    server.send(200, "text/plain", "OK");
+}
+
+static void handleDisplayData() {
+    HTTPUpload &upload = server.upload();
+    static uint8_t *_buf = nullptr;
+    static size_t   _len = 0;
+
+    if (upload.status == UPLOAD_FILE_START) {
+        _len = 0;
+        free(_buf); _buf = nullptr;
+        LOG("JPEG upload START (heap=%u)\n", ESP.getFreeHeap());
+
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        uint8_t *tmp = (uint8_t *)realloc(_buf, _len + upload.currentSize);
+        if (!tmp) { LOG("JPEG realloc failed\n"); return; }
+        _buf = tmp;
+        memcpy(_buf + _len, upload.buf, upload.currentSize);
+        _len += upload.currentSize;
+
+    } else if (upload.status == UPLOAD_FILE_END) {
+        bool ok = false;
+        if (_buf && _len > 0) {
+            // Save + display
+            ok = fsSaveUpload(_buf, _len);
+            if (ok) jpegDisplayFile(UPLOAD_PATH);
+        }
+        free(_buf); _buf = nullptr; _len = 0;
+        if (ok) setMode(MODE_JPEG);
+        LOG("JPEG upload END: %s (heap=%u)\n", ok ? "OK" : "FAIL", ESP.getFreeHeap());
+    }
+}
+
+// ── GET /set?brt=N ────────────────────────────────────────────────────────────
+
+static void handleSet() {
+    if (server.hasArg("brt")) {
+        _brightness = (uint8_t)server.arg("brt").toInt();
+        displaySetBrightness(_brightness);
+        LOG("Brightness -> %d\n", _brightness);
+    }
+    sendJSON(200, "{\"ok\":true}");
 }
 
 // ── public init ───────────────────────────────────────────────────────────────
 
 void httpServerInit() {
-    loadState();
+    server.on("/",        HTTP_GET,  handleRoot);
+    server.on("/mode",    HTTP_GET,  handleMode);
+    server.on("/draw",    HTTP_POST, handleDraw);
+    server.on("/set",     HTTP_GET,  handleSet);
 
-    server.on("/",          HTTP_GET,  handleRoot);
-    server.on("/v.json",    HTTP_GET,  handleVersion);
-    server.on("/app.json",  HTTP_GET,  handleApp);
-    server.on("/img.json",  HTTP_GET,  handleImg);
-    server.on("/brt.json",  HTTP_GET,  handleBrt);
-    server.on("/set",       HTTP_GET,  handleSet);
-    server.on("/delete",    HTTP_GET,  handleDelete);
-    server.on("/config",    HTTP_POST, handleConfig);
+    // JPEG push: /display (new) and /doUpload (legacy compat)
+    server.on("/display",  HTTP_POST, handleDisplay,  handleDisplayData);
+    server.on("/doUpload", HTTP_POST, handleDisplay,  handleDisplayData);
 
-    // File upload: handler fires after multipart is complete; data handler streams chunks
-    server.on("/doUpload", HTTP_POST,
-        handleUpload,
-        handleUploadData);
-
-    // OTA update page + binary upload
     updater.setup(&server, "/update");
-
     server.begin();
     LOG("HTTP server started\n");
 }

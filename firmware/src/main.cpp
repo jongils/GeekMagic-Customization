@@ -11,14 +11,12 @@
 #include "http_server.h"
 #include "jpeg_display.h"
 #include "clock_theme.h"
-#include "weather_theme.h"
 
 // ── NTP ───────────────────────────────────────────────────────────────────────
 
 static WiFiUDP   _ntpUDP;
 static NTPClient _ntp(_ntpUDP, NTP_SERVER, NTP_OFFSET_SEC, 60000);
 
-// Sync POSIX time from NTPClient so time() / localtime_r() work correctly
 static void syncPosixTime() {
     _ntp.update();
     unsigned long epoch = _ntp.getEpochTime();
@@ -28,11 +26,10 @@ static void syncPosixTime() {
     }
 }
 
-// ── clock ticker (1-second interrupt) ────────────────────────────────────────
+// ── 1-second ticker ───────────────────────────────────────────────────────────
 
-static Ticker    _clockTicker;
-static volatile bool _clockTick = false;
-
+static Ticker         _clockTicker;
+static volatile bool  _clockTick = false;
 static void IRAM_ATTR onClockTick() { _clockTick = true; }
 
 // ── WiFi setup ────────────────────────────────────────────────────────────────
@@ -43,14 +40,12 @@ static void wifiSetup() {
 
     WiFiManager wm;
     wm.setConfigPortalTimeout(120);
-
-    // Called while config portal is active — show AP instructions
-    wm.setAPCallback([](WiFiManager *wm) {
+    wm.setAPCallback([](WiFiManager *) {
         displayFill(TFT_BLACK);
-        displayTextCentre(0,  50, DISPLAY_W, "Connect to WiFi:", COL_WHITE, 1);
-        displayTextCentre(0,  72, DISPLAY_W, WIFI_AP_NAME,       COL_CYAN,  2);
-        displayTextCentre(0, 110, DISPLAY_W, "Then open:",       COL_GREY,  1);
-        displayTextCentre(0, 130, DISPLAY_W, "192.168.4.1",     COL_WHITE, 1);
+        displayTextCentre(0,  90, DISPLAY_W, "Connect to WiFi:", COL_WHITE, 1);
+        displayTextCentre(0, 110, DISPLAY_W, WIFI_AP_NAME,       COL_CYAN,  2);
+        displayTextCentre(0, 148, DISPLAY_W, "then open",        COL_GREY,  1);
+        displayTextCentre(0, 166, DISPLAY_W, "192.168.4.1",     COL_WHITE, 1);
     });
 
     if (!wm.autoConnect(WIFI_AP_NAME)) {
@@ -61,8 +56,7 @@ static void wifiSetup() {
 
     displayFill(TFT_BLACK);
     displayTextCentre(0, 100, DISPLAY_W, "WiFi OK",      COL_GREEN, 2);
-    displayTextCentre(0, 126, DISPLAY_W, WiFi.localIP().toString().c_str(),
-                      COL_WHITE, 1);
+    displayTextCentre(0, 126, DISPLAY_W, WiFi.localIP().toString().c_str(), COL_WHITE, 1);
     delay(1500);
 }
 
@@ -86,67 +80,48 @@ void setup() {
 
     wifiSetup();
 
-    // NTP
     _ntp.begin();
     syncPosixTime();
 
-    // HTTP server
     httpServerInit();
-
-    // Clock ticker: fires every 1 second
     _clockTicker.attach(1.0f, onClockTick);
-
     clockThemeInit();
+    displayFill(TFT_BLACK);
 
-    // Restore last display state
-    uint8_t theme = httpGetTheme();
-    if (theme == THEME_PHOTO_ALBUM && fsExists(UPLOAD_PATH)) {
-        jpegDisplayFile(UPLOAD_PATH);
-    } else {
-        displayFill(TFT_BLACK);
-    }
-
-    LOG("Setup complete. Theme=%d  Free heap=%u\n", theme, ESP.getFreeHeap());
+    LOG("Setup done. IP=%s  heap=%u\n",
+        WiFi.localIP().toString().c_str(), ESP.getFreeHeap());
 }
 
 // ── loop ──────────────────────────────────────────────────────────────────────
 
+static DisplayMode _lastMode = MODE_CLOCK;
+
 void loop() {
     httpServerHandle();
     ESP.wdtFeed();
-
-    // NTP re-sync every 60 s (NTPClient handles the interval internally)
     syncPosixTime();
 
-    // Weather data refresh (non-blocking; skips if cache is fresh)
-    uint8_t theme = httpGetTheme();
-    bool isWeatherTheme = (theme == THEME_WEATHER_CLOCK    ||
-                           theme == THEME_WEATHER_FORECAST  ||
-                           theme == THEME_SIMPLE_WEATHER);
-    if (isWeatherTheme) weatherUpdate();
+    DisplayMode mode = httpGetDisplayMode();
 
-    // Per-second render for clock/weather themes
+    // Detect revert to clock → reinitialise so it redraws immediately
+    if (mode == MODE_CLOCK && _lastMode != MODE_CLOCK) {
+        clockThemeInit();
+        displayFill(TFT_BLACK);
+    }
+    _lastMode = mode;
+
+    // Auto-revert when a timed /draw command expires
+    if (httpCheckModeTimeout()) {
+        // httpCheckModeTimeout() already set mode back to MODE_CLOCK;
+        // next iteration will trigger the reinit above
+    }
+
     if (_clockTick) {
         _clockTick = false;
-
-        switch (theme) {
-            case THEME_CLOCK_1:
-            case THEME_CLOCK_2:
-            case THEME_CLOCK_3:
-                clockThemeRender(theme);
-                break;
-
-            case THEME_WEATHER_CLOCK:
-            case THEME_WEATHER_FORECAST:
-            case THEME_SIMPLE_WEATHER:
-                if (weatherDataValid()) weatherThemeRender(theme);
-                else clockThemeRender(THEME_CLOCK_1); // fallback until data arrives
-                break;
-
-            case THEME_PHOTO_ALBUM:
-                // Image updates are driven by HTTP push; no periodic render needed
-                break;
+        if (mode == MODE_CLOCK) {
+            clockThemeRender(THEME_CLOCK_1);
         }
+        // MODE_DRAW / MODE_JPEG: display managed by /draw or /display
     }
 
     yield();

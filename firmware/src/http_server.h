@@ -1,20 +1,25 @@
 #pragma once
-
 #include <stdint.h>
 
-// Initialise and start the HTTP server on port 80.
-// Must be called after WiFi is connected.
-void httpServerInit();
+// ── Display mode ──────────────────────────────────────────────────────────────
 
-// Process pending HTTP requests; call from main loop().
+enum DisplayMode : uint8_t {
+    MODE_CLOCK = 0,   // Default: 1-second clock render
+    MODE_DRAW  = 1,   // Drawing commands active (/draw)
+    MODE_JPEG  = 2    // JPEG image displayed (/display, /doUpload)
+};
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+void httpServerInit();
 void httpServerHandle();
 
-// Returns the currently active theme number (1–7)
-uint8_t httpGetTheme();
+// Returns the active display mode.
+DisplayMode httpGetDisplayMode();
 
-// Returns the currently configured brightness (0–255)
+// Call from loop(): if a timeout was set on /draw and it has expired,
+// reverts to MODE_CLOCK and returns true so the caller can reinitialise.
+bool httpCheckModeTimeout();
+
+// Returns current brightness (0–255).
 uint8_t httpGetBrightness();
-
-// Returns true if a new image was just received and rendered;
-// clears the flag on read.
-bool httpConsumeImageReady();

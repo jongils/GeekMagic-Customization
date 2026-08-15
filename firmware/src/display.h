@@ -42,6 +42,18 @@ void displayRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t colour);
 void displayRoundRect(int16_t x, int16_t y, int16_t w, int16_t h,
                       int16_t r, uint16_t colour);
 
+// Draws a straight line between two points
+void displayLine(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t colour);
+
+// Draws a vertical line
+void displayVLine(int16_t x, int16_t y, int16_t len, uint16_t colour);
+
+// Draws a circle outline
+void displayCircle(int16_t x, int16_t y, int16_t r, uint16_t colour);
+
+// Draws a filled circle
+void displayCircleFill(int16_t x, int16_t y, int16_t r, uint16_t colour);
+
 // Sets backlight brightness (0–255); no-op if TFT_BL == -1
 void displaySetBrightness(uint8_t level);
 
