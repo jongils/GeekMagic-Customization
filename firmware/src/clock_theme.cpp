@@ -67,7 +67,7 @@ static void renderTheme4(const struct tm &t) {
                  WDAY_EN[t.tm_wday]);
         displayHLine(20, 183, DISPLAY_W - 40, COL_GREY);
         displayRect(0, 188, DISPLAY_W, 24, TFT_BLACK);
-        displayTextCentre(0, 190, DISPLAY_W, dateBuf, COL_WHITE, 1);
+        displayTextCentre(0, 190, DISPLAY_W, dateBuf, COL_WHITE, 2);
         _lastWday = t.tm_wday;
     }
 }
