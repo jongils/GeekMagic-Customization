@@ -42,21 +42,21 @@ static void wifiSetup() {
     wm.setConfigPortalTimeout(120);
     wm.setAPCallback([](WiFiManager *) {
         displayFill(TFT_BLACK);
-        displayTextCentre(0,  90, DISPLAY_W, "Connect to WiFi:", COL_WHITE, 1);
-        displayTextCentre(0, 110, DISPLAY_W, WIFI_AP_NAME,       COL_CYAN,  2);
-        displayTextCentre(0, 148, DISPLAY_W, "then open",        COL_GREY,  1);
-        displayTextCentre(0, 166, DISPLAY_W, "192.168.4.1",     COL_WHITE, 1);
+        displayTextCentre(SAFE_X,  80, SAFE_W, "Connect to WiFi:", COL_WHITE, 1);
+        displayTextCentre(SAFE_X, 100, SAFE_W, WIFI_AP_NAME,       COL_CYAN,  2);
+        displayTextCentre(SAFE_X, 138, SAFE_W, "then open",        COL_GREY,  1);
+        displayTextCentre(SAFE_X, 155, SAFE_W, "192.168.4.1",      COL_WHITE, 1);
     });
 
     if (!wm.autoConnect(WIFI_AP_NAME)) {
-        displayTextCentre(0, 120, DISPLAY_W, "WiFi failed!", COL_RED, 2);
+        displayTextCentre(SAFE_X, 110, SAFE_W, "WiFi failed!", COL_RED, 2);
         delay(3000);
         ESP.restart();
     }
 
     displayFill(TFT_BLACK);
-    displayTextCentre(0, 100, DISPLAY_W, "WiFi OK",      COL_GREEN, 2);
-    displayTextCentre(0, 126, DISPLAY_W, WiFi.localIP().toString().c_str(), COL_WHITE, 1);
+    displayTextCentre(SAFE_X,  95, SAFE_W, "WiFi OK",      COL_GREEN, 2);
+    displayTextCentre(SAFE_X, 121, SAFE_W, WiFi.localIP().toString().c_str(), COL_WHITE, 1);
     delay(1500);
 }
 

@@ -4,131 +4,150 @@
 #include <Arduino.h>
 #include <time.h>
 
-// Cache last-rendered values to minimise redraws
-static int8_t _lastHour   = -1;
-static int8_t _lastMin    = -1;
-static int8_t _lastSec    = -1;
-static int8_t _lastWday   = -1;
+static int8_t _lastHour = -1;
+static int8_t _lastMin  = -1;
+static int8_t _lastSec  = -1;
+static int8_t _lastWday = -1;
 
-static const char *WDAY_KR[] = {
-    "일요일","월요일","화요일","수요일","목요일","금요일","토요일"
-};
-static const char *WDAY_EN[] = {
-    "SUN","MON","TUE","WED","THU","FRI","SAT"
-};
+static const char *WDAY_EN[]   = { "SUN","MON","TUE","WED","THU","FRI","SAT" };
+static const char *WDAY_FULL[] = { "SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY" };
 
 void clockThemeInit() {
     _lastHour = _lastMin = _lastSec = _lastWday = -1;
 }
 
 bool clockTimeValid() {
-    time_t now = time(nullptr);
-    return now > 1000000000UL;   // sanity check: past year 2001
+    return time(nullptr) > 1000000000UL;
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-static void drawTwoDigit(int16_t x, int16_t y, int val,
-                         uint16_t colour, uint8_t sz) {
-    char buf[4];
-    snprintf(buf, sizeof(buf), "%02d", val);
-    // Erase old number first to avoid ghost pixels
-    displayRect(x, y, sz * 12 * 2, sz * 16, TFT_BLACK);
-    displayText(x, y, buf, colour, sz);
-}
-
-// ── Theme 4: large digital clock + date (default) ────────────────────────────
+// ── Theme 4: 메인 시계 ────────────────────────────────────────────────────────
+//
+// 안전 영역 (SAFE_X=5, SAFE_Y=5, SAFE_W=230, SAFE_H=225) 기준 레이아웃
+//   y= 34: date "2026.08.17  MON"  size 2, COL_GREY
+//   y= 56: separator line
+//   y= 70: HH:MM                   size 6, COL_CYAN   [48px → ends y=118]
+//   y=127: :SS                     size 3, COL_GREY   [24px → ends y=151]
+//   y=170: separator line
+//   y=184: weekday full name        size 2, COL_WHITE  [16px → ends y=200]
+//
+// 상하 여백 각 29px → 수직 중앙 정렬
 
 static void renderTheme4(const struct tm &t) {
-    // Hour and minute (large, centre-stage)
+    // ── Day/date strip — redraws only when day changes ───────────────────────
+    if (t.tm_wday != _lastWday) {
+        // Date
+        char dateBuf[20];
+        snprintf(dateBuf, sizeof(dateBuf), "%04d.%02d.%02d  %s",
+                 1900 + t.tm_year, t.tm_mon + 1, t.tm_mday,
+                 WDAY_EN[t.tm_wday]);
+        displayRect(SAFE_X, 34, SAFE_W, 16, TFT_BLACK);
+        displayTextCentre(SAFE_X, 34, SAFE_W, dateBuf, COL_GREY, 2);
+
+        // Separators
+        displayHLine(SAFE_X, 56, SAFE_W, COL_GREY);
+        displayHLine(SAFE_X, 170, SAFE_W, COL_GREY);
+
+        // Weekday full name
+        displayRect(SAFE_X, 184, SAFE_W, 16, TFT_BLACK);
+        displayTextCentre(SAFE_X, 184, SAFE_W, WDAY_FULL[t.tm_wday], COL_WHITE, 2);
+
+        _lastWday = t.tm_wday;
+    }
+
+    // ── HH:MM — size 6 (48px) ────────────────────────────────────────────────
     if (t.tm_hour != _lastHour || t.tm_min != _lastMin) {
         char buf[6];
         snprintf(buf, sizeof(buf), "%02d:%02d", t.tm_hour, t.tm_min);
-        displayRect(0, 72, DISPLAY_W, 76, TFT_BLACK);
-        displayTextCentre(0, 76, DISPLAY_W, buf, COL_CYAN, 4);
+        displayRect(SAFE_X, 70, SAFE_W, 48, TFT_BLACK);
+        displayTextCentre(SAFE_X, 70, SAFE_W, buf, COL_CYAN, 6);
         _lastHour = t.tm_hour;
         _lastMin  = t.tm_min;
     }
 
-    // Seconds (smaller, below HH:MM)
+    // ── :SS — size 3 (24px) ──────────────────────────────────────────────────
     if (t.tm_sec != _lastSec) {
         char buf[4];
         snprintf(buf, sizeof(buf), ":%02d", t.tm_sec);
-        displayRect(0, 152, DISPLAY_W, 24, TFT_BLACK);
-        displayTextCentre(0, 152, DISPLAY_W, buf, COL_GREY, 2);
+        displayRect(SAFE_X, 127, SAFE_W, 24, TFT_BLACK);
+        displayTextCentre(SAFE_X, 127, SAFE_W, buf, COL_GREY, 3);
         _lastSec = t.tm_sec;
-    }
-
-    // Date line — bottom of screen where it's always visible
-    if (t.tm_wday != _lastWday) {
-        char dateBuf[32];
-        snprintf(dateBuf, sizeof(dateBuf), "%d.%02d.%02d %s",
-                 1900 + t.tm_year, t.tm_mon + 1, t.tm_mday,
-                 WDAY_EN[t.tm_wday]);
-        displayHLine(20, 183, DISPLAY_W - 40, COL_GREY);
-        displayRect(0, 188, DISPLAY_W, 24, TFT_BLACK);
-        displayTextCentre(0, 190, DISPLAY_W, dateBuf, COL_WHITE, 2);
-        _lastWday = t.tm_wday;
     }
 }
 
-// ── Theme 5: two-line style ───────────────────────────────────────────────────
+// ── Theme 5: 두 줄 스타일 ────────────────────────────────────────────────────
+//
+//   y= 25: date "2026.08.17"  size 1, COL_GREY
+//   y= 40: separator
+//   y= 55: HH:MM              size 5, COL_YELLOW  [40px → ends y=95]
+//   y=105: "-- SS --"         size 2, COL_GREY    [16px → ends y=121]
+//   y=140: separator
+//   y=155: "WED  2026/08/17"  size 1, COL_WHITE
 
 static void renderTheme5(const struct tm &t) {
-    // HH:MM on line 1
+    if (t.tm_wday != _lastWday) {
+        char dateBuf[24];
+        snprintf(dateBuf, sizeof(dateBuf), "%s  %04d/%02d/%02d",
+                 WDAY_EN[t.tm_wday],
+                 1900 + t.tm_year, t.tm_mon + 1, t.tm_mday);
+        displayRect(SAFE_X, 25, SAFE_W, 8, TFT_BLACK);
+        displayTextCentre(SAFE_X, 25, SAFE_W, dateBuf, COL_GREY, 1);
+        displayHLine(SAFE_X, 40, SAFE_W, COL_GREY);
+        displayHLine(SAFE_X, 140, SAFE_W, COL_GREY);
+        char wdayBuf[12];
+        snprintf(wdayBuf, sizeof(wdayBuf), "%04d.%02d.%02d",
+                 1900 + t.tm_year, t.tm_mon + 1, t.tm_mday);
+        displayRect(SAFE_X, 155, SAFE_W, 8, TFT_BLACK);
+        displayTextCentre(SAFE_X, 155, SAFE_W, wdayBuf, COL_WHITE, 1);
+        _lastWday = t.tm_wday;
+    }
+
     if (t.tm_hour != _lastHour || t.tm_min != _lastMin) {
         char buf[6];
         snprintf(buf, sizeof(buf), "%02d:%02d", t.tm_hour, t.tm_min);
-        displayRect(0, 55, DISPLAY_W, 72, TFT_BLACK);
-        displayTextCentre(0, 60, DISPLAY_W, buf, COL_YELLOW, 4);
+        displayRect(SAFE_X, 55, SAFE_W, 40, TFT_BLACK);
+        displayTextCentre(SAFE_X, 55, SAFE_W, buf, COL_YELLOW, 5);
         _lastHour = t.tm_hour;
         _lastMin  = t.tm_min;
     }
 
-    // SS on line 2
     if (t.tm_sec != _lastSec) {
         char buf[12];
         snprintf(buf, sizeof(buf), "-- %02d --", t.tm_sec);
-        displayRect(0, 135, DISPLAY_W, 36, TFT_BLACK);
-        displayTextCentre(0, 138, DISPLAY_W, buf, COL_GREY, 2);
+        displayRect(SAFE_X, 105, SAFE_W, 16, TFT_BLACK);
+        displayTextCentre(SAFE_X, 105, SAFE_W, buf, COL_GREY, 2);
         _lastSec = t.tm_sec;
-    }
-
-    if (t.tm_wday != _lastWday) {
-        char dateBuf[32];
-        snprintf(dateBuf, sizeof(dateBuf), "%s  %04d/%02d/%02d",
-                 WDAY_EN[t.tm_wday],
-                 1900 + t.tm_year, t.tm_mon + 1, t.tm_mday);
-        displayRect(0, 178, DISPLAY_W, 28, TFT_BLACK);
-        displayTextCentre(0, 182, DISPLAY_W, dateBuf, COL_WHITE, 1);
-        _lastWday = t.tm_wday;
     }
 }
 
-// ── Theme 6: HH MM SS three separate panels ──────────────────────────────────
+// ── Theme 6: HOUR / MIN / SEC 3단 패널 ───────────────────────────────────────
+//
+// 안전 높이 225px → 3등분 = 75px each
+//   HOUR label y=13,  value y=25   (size 4, 32px)
+//   MIN  label y=88,  value y=100  (size 4, 32px)
+//   SEC  label y=163, value y=175  (size 4, 32px)  → ends y=207 ≤ SAFE_Y2=229
 
 static void renderTheme6(const struct tm &t) {
-    // Draw static labels on first render (wday change is a good proxy)
     if (t.tm_wday != _lastWday) {
         tft.fillScreen(TFT_BLACK);
-        displayTextCentre(0,  10, DISPLAY_W, "HOUR", COL_GREY, 1);
-        displayTextCentre(0,  90, DISPLAY_W, "MIN",  COL_GREY, 1);
-        displayTextCentre(0, 170, DISPLAY_W, "SEC",  COL_GREY, 1);
+        displayTextCentre(SAFE_X,  13, SAFE_W, "HOUR", COL_GREY, 1);
+        displayTextCentre(SAFE_X,  88, SAFE_W, "MIN",  COL_GREY, 1);
+        displayTextCentre(SAFE_X, 163, SAFE_W, "SEC",  COL_GREY, 1);
+        // Thin divider lines
+        displayHLine(SAFE_X, 82, SAFE_W, COL_GREY);
+        displayHLine(SAFE_X, 157, SAFE_W, COL_GREY);
         _lastWday = t.tm_wday;
     }
 
-    if (t.tm_hour != _lastHour) {
-        drawTwoDigit(84, 22, t.tm_hour, COL_CYAN, 4);
-        _lastHour = t.tm_hour;
-    }
-    if (t.tm_min != _lastMin) {
-        drawTwoDigit(84, 102, t.tm_min, COL_YELLOW, 4);
-        _lastMin = t.tm_min;
-    }
-    if (t.tm_sec != _lastSec) {
-        drawTwoDigit(84, 182, t.tm_sec, COL_WHITE, 4);
-        _lastSec = t.tm_sec;
-    }
+    auto drawVal = [](int16_t y, int val, uint16_t col) {
+        char buf[4];
+        snprintf(buf, sizeof(buf), "%02d", val);
+        displayRect(SAFE_X, y, SAFE_W, 32, TFT_BLACK);
+        displayTextCentre(SAFE_X, y, SAFE_W, buf, col, 4);
+    };
+
+    if (t.tm_hour != _lastHour) { drawVal(25,  t.tm_hour, COL_CYAN);   _lastHour = t.tm_hour; }
+    if (t.tm_min  != _lastMin)  { drawVal(100, t.tm_min,  COL_YELLOW); _lastMin  = t.tm_min;  }
+    if (t.tm_sec  != _lastSec)  { drawVal(175, t.tm_sec,  COL_WHITE);  _lastSec  = t.tm_sec;  }
 }
 
 // ── public entry point ────────────────────────────────────────────────────────
@@ -136,7 +155,8 @@ static void renderTheme6(const struct tm &t) {
 void clockThemeRender(uint8_t theme) {
     time_t now = time(nullptr);
     if (now < 1000000000UL) {
-        displayTextCentre(0, 110, DISPLAY_W, "NTP syncing...", COL_GREY, 1);
+        displayRect(SAFE_X, SAFE_Y + 100, SAFE_W, 8, TFT_BLACK);
+        displayTextCentre(SAFE_X, SAFE_Y + 100, SAFE_W, "NTP syncing...", COL_GREY, 1);
         return;
     }
 

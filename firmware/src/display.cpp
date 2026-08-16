@@ -80,9 +80,9 @@ void displaySetBrightness(uint8_t level) {
 
 void displayBootSplash() {
     tft.fillScreen(TFT_BLACK);
-    displayTextCentre(0, 90, DISPLAY_W, "GeekMagic", COL_CYAN, 3);
-    displayTextCentre(0, 125, DISPLAY_W, "Custom Firmware", COL_WHITE, 2);
-    displayTextCentre(0, 148, DISPLAY_W, FW_VERSION, COL_GREY, 1);
-    displayHLine(40, 170, 160, COL_GREY);
-    displayTextCentre(0, 180, DISPLAY_W, "Connecting WiFi...", COL_GREY, 1);
+    displayTextCentre(SAFE_X,  78, SAFE_W, "GeekMagic",          COL_CYAN,  3);
+    displayTextCentre(SAFE_X, 113, SAFE_W, "Custom Firmware",    COL_WHITE, 2);
+    displayTextCentre(SAFE_X, 136, SAFE_W, FW_VERSION,           COL_GREY,  1);
+    displayHLine(SAFE_X, 155, SAFE_W, COL_GREY);
+    displayTextCentre(SAFE_X, 165, SAFE_W, "Connecting WiFi...", COL_GREY,  1);
 }
