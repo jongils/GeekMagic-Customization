@@ -124,5 +124,9 @@ void loop() {
         // MODE_DRAW / MODE_JPEG: display managed by /draw or /display
     }
 
+    if (mode == MODE_CLOCK) {
+        clockAnimUpdate();   // smooth icon animation (~60 fps, millis-based)
+    }
+
     yield();
 }

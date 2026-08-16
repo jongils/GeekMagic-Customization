@@ -4,16 +4,18 @@
 #include <Arduino.h>
 #include <time.h>
 
-static int8_t _lastHour = -1;
-static int8_t _lastMin  = -1;
-static int8_t _lastSec  = -1;
-static int8_t _lastWday = -1;
+static int8_t  _lastHour = -1;
+static int8_t  _lastMin  = -1;
+static int8_t  _lastSec  = -1;
+static int8_t  _lastWday = -1;
+static int16_t _iconX    = -1;   // current icon x centre (-1 = not drawn yet)
 
 static const char *WDAY_EN[]   = { "SUN","MON","TUE","WED","THU","FRI","SAT" };
 static const char *WDAY_FULL[] = { "SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY" };
 
 void clockThemeInit() {
     _lastHour = _lastMin = _lastSec = _lastWday = -1;
+    _iconX = -1;   // force full redraw; screen is cleared by caller
 }
 
 bool clockTimeValid() {
@@ -148,6 +150,63 @@ static void renderTheme6(const struct tm &t) {
     if (t.tm_hour != _lastHour) { drawVal(25,  t.tm_hour, COL_CYAN);   _lastHour = t.tm_hour; }
     if (t.tm_min  != _lastMin)  { drawVal(100, t.tm_min,  COL_YELLOW); _lastMin  = t.tm_min;  }
     if (t.tm_sec  != _lastSec)  { drawVal(175, t.tm_sec,  COL_WHITE);  _lastSec  = t.tm_sec;  }
+}
+
+// ── Claude icon animation ─────────────────────────────────────────────────────
+//
+// 6-spoke asterisk in COL_ORANGE, bouncing left ↔ right in the bottom strip.
+//   ICON_Y  = 215  (below weekday label, within SAFE_Y2=229)
+//   ICON_OR = 9    outer ray radius  → icon bounding box ~19×19 px
+//   ICON_IR = 3    centre filled circle radius
+//
+// X range: SAFE_X+11 … SAFE_X2-11  (= 16 … 223)
+// Period : 6 s per full round-trip → visually ~35 px/s
+
+#define ICON_Y   215
+#define ICON_OR    9
+#define ICON_IR    3
+
+// Pre-computed endpoints for 6 spokes (cos/sin × radius, integer approximation)
+static const int8_t SPOKE_OX[6] = {  9,  5, -5, -9, -5,  5 }; // outer, r=9
+static const int8_t SPOKE_OY[6] = {  0,  8,  8,  0, -8, -8 };
+static const int8_t SPOKE_IX[6] = {  4,  2, -2, -4, -2,  2 }; // inner, r=4
+static const int8_t SPOKE_IY[6] = {  0,  3,  3,  0, -3, -3 };
+
+static void iconErase(int16_t cx) {
+    tft.fillRect(cx - ICON_OR - 1, ICON_Y - ICON_OR - 1,
+                 (ICON_OR + 1) * 2, (ICON_OR + 1) * 2, TFT_BLACK);
+}
+
+static void iconDraw(int16_t cx) {
+    for (int i = 0; i < 6; i++) {
+        tft.drawLine(cx + SPOKE_IX[i], ICON_Y + SPOKE_IY[i],
+                     cx + SPOKE_OX[i], ICON_Y + SPOKE_OY[i], COL_ORANGE);
+    }
+    tft.fillCircle(cx, ICON_Y, ICON_IR, COL_ORANGE);
+}
+
+void clockAnimUpdate() {
+    static uint32_t _lastMs = 0;
+    uint32_t now = millis();
+    if (now - _lastMs < 16) return;   // ~60 fps cap
+    _lastMs = now;
+
+    // Triangle wave 0.0 → 1.0 → 0.0 over PERIOD ms
+    const uint32_t PERIOD = 6000;
+    uint32_t phase = now % PERIOD;
+    float frac = phase < PERIOD / 2
+                 ? (float)phase / (PERIOD / 2)
+                 : 1.0f - (float)(phase - PERIOD / 2) / (PERIOD / 2);
+
+    int16_t minX = SAFE_X  + ICON_OR + 2;
+    int16_t maxX = SAFE_X2 - ICON_OR - 2;
+    int16_t newX = minX + (int16_t)(frac * (maxX - minX));
+
+    if (newX == _iconX) return;
+
+    if (_iconX >= 0) iconErase(_iconX);
+    iconDraw(newX);
+    _iconX = newX;
 }
 
 // ── public entry point ────────────────────────────────────────────────────────

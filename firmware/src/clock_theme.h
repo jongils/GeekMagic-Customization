@@ -11,3 +11,6 @@ void clockThemeRender(uint8_t theme);
 
 // Returns true if NTP time is valid
 bool clockTimeValid();
+
+// Smooth left-right icon animation — call every loop() when in clock mode
+void clockAnimUpdate();
