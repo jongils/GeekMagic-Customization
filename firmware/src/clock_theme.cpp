@@ -152,37 +152,57 @@ static void renderTheme6(const struct tm &t) {
     if (t.tm_sec  != _lastSec)  { drawVal(175, t.tm_sec,  COL_WHITE);  _lastSec  = t.tm_sec;  }
 }
 
-// ── Claude icon animation ─────────────────────────────────────────────────────
+// ── 🦀 Crab icon animation (Claude CLI mascot) ────────────────────────────────
 //
-// 6-spoke asterisk in COL_ORANGE, bouncing left ↔ right in the bottom strip.
-//   ICON_Y  = 215  (below weekday label, within SAFE_Y2=229)
-//   ICON_OR = 9    outer ray radius  → icon bounding box ~19×19 px
-//   ICON_IR = 3    centre filled circle radius
+// Drawn with TFT primitives (built-in fonts cannot render emoji).
+// Bounding box: ±14 px wide, ±9 px tall → 29×19 px total
+//   ICON_Y = 215  (gap below weekday label; legs end at y=224 ≤ SAFE_Y2=229)
 //
-// X range: SAFE_X+11 … SAFE_X2-11  (= 16 … 223)
-// Period : 6 s per full round-trip → visually ~35 px/s
+// X range: SAFE_X+16 … SAFE_X2-16  (= 21 … 218)
+// Period : 6 s per full round-trip
 
-#define ICON_Y   215
-#define ICON_OR    9
-#define ICON_IR    3
-
-// Pre-computed endpoints for 6 spokes (cos/sin × radius, integer approximation)
-static const int8_t SPOKE_OX[6] = {  9,  5, -5, -9, -5,  5 }; // outer, r=9
-static const int8_t SPOKE_OY[6] = {  0,  8,  8,  0, -8, -8 };
-static const int8_t SPOKE_IX[6] = {  4,  2, -2, -4, -2,  2 }; // inner, r=4
-static const int8_t SPOKE_IY[6] = {  0,  3,  3,  0, -3, -3 };
+#define ICON_Y    215
+#define ICON_HW    14   // half-width  for erase rect
+#define ICON_HH     9   // half-height for erase rect
 
 static void iconErase(int16_t cx) {
-    tft.fillRect(cx - ICON_OR - 1, ICON_Y - ICON_OR - 1,
-                 (ICON_OR + 1) * 2, (ICON_OR + 1) * 2, TFT_BLACK);
+    tft.fillRect(cx - ICON_HW - 1, ICON_Y - ICON_HH - 1,
+                 (ICON_HW + 1) * 2, (ICON_HH + 1) * 2, TFT_BLACK);
 }
 
 static void iconDraw(int16_t cx) {
-    for (int i = 0; i < 6; i++) {
-        tft.drawLine(cx + SPOKE_IX[i], ICON_Y + SPOKE_IY[i],
-                     cx + SPOKE_OX[i], ICON_Y + SPOKE_OY[i], COL_ORANGE);
-    }
-    tft.fillCircle(cx, ICON_Y, ICON_IR, COL_ORANGE);
+    const int16_t y   = ICON_Y;
+    const uint16_t R  = 0xF800;   // red
+    const uint16_t W  = TFT_WHITE;
+    const uint16_t B  = TFT_BLACK;
+
+    // Body
+    tft.fillCircle(cx, y, 5, R);
+
+    // Eyes: white circle + black pupil
+    tft.fillCircle(cx - 3, y - 5, 2, W);
+    tft.fillCircle(cx + 3, y - 5, 2, W);
+    tft.fillCircle(cx - 3, y - 5, 1, B);
+    tft.fillCircle(cx + 3, y - 5, 1, B);
+
+    // Left claw: arm + two pincers
+    tft.drawLine(cx - 5,  y - 1, cx - 10, y - 4, R);
+    tft.drawLine(cx - 10, y - 4, cx - 13, y - 7, R);
+    tft.drawLine(cx - 10, y - 4, cx - 13, y - 1, R);
+
+    // Right claw (mirror)
+    tft.drawLine(cx + 5,  y - 1, cx + 10, y - 4, R);
+    tft.drawLine(cx + 10, y - 4, cx + 13, y - 7, R);
+    tft.drawLine(cx + 10, y - 4, cx + 13, y - 1, R);
+
+    // Legs — 3 per side
+    tft.drawLine(cx - 4, y + 3, cx - 8, y + 7, R);
+    tft.drawLine(cx - 3, y + 4, cx - 6, y + 9, R);
+    tft.drawLine(cx - 2, y + 4, cx - 4, y + 9, R);
+
+    tft.drawLine(cx + 4, y + 3, cx + 8, y + 7, R);
+    tft.drawLine(cx + 3, y + 4, cx + 6, y + 9, R);
+    tft.drawLine(cx + 2, y + 4, cx + 4, y + 9, R);
 }
 
 void clockAnimUpdate() {
@@ -198,8 +218,8 @@ void clockAnimUpdate() {
                  ? (float)phase / (PERIOD / 2)
                  : 1.0f - (float)(phase - PERIOD / 2) / (PERIOD / 2);
 
-    int16_t minX = SAFE_X  + ICON_OR + 2;
-    int16_t maxX = SAFE_X2 - ICON_OR - 2;
+    int16_t minX = SAFE_X  + ICON_HW + 2;
+    int16_t maxX = SAFE_X2 - ICON_HW - 2;
     int16_t newX = minX + (int16_t)(frac * (maxX - minX));
 
     if (newX == _iconX) return;
