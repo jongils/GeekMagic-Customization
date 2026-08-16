@@ -89,6 +89,8 @@ ls -la /dev/serial0
 
 ## 3. 하드웨어 연결 (Pi ↔ ESP8266)
 
+![Pi 5 ↔ ESP-12F 핀맵](docs/pinmap.svg)
+
 ### 시리얼 핀 연결 (플래시 전용)
 
 | Raspberry Pi 5 | GPIO | ESP8266 |

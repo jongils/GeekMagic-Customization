@@ -1,0 +1,269 @@
+<svg viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Pi 5 ↔ ESP-12F Serial Pinmap</title>
+<desc>Raspberry Pi 5의 GPIO 핀과 ESP-12F(ESP8266) 핀 연결 배선도. 시리얼 플래시 및 OTA 업데이트용.</desc>
+
+<defs>
+  <!-- TX arrowhead: points right toward ESP RX -->
+  <marker id="ah-tx" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0,0 7,2.5 0,5" fill="#D4824A"/>
+  </marker>
+  <!-- RX arrowhead: points left toward Pi RX -->
+  <marker id="ah-rx" markerWidth="7" markerHeight="5" refX="0" refY="2.5" orient="auto">
+    <polygon points="7,0 0,2.5 7,5" fill="#C9A83A"/>
+  </marker>
+</defs>
+
+<!-- ── Background ─────────────────────────────────── -->
+<rect width="800" height="520" fill="#0E1823"/>
+
+<!-- Subtle dot grid -->
+<pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+  <circle cx="1" cy="1" r="0.8" fill="#141F2D"/>
+</pattern>
+<rect width="800" height="520" fill="url(#dots)"/>
+
+<!-- ── Page title ──────────────────────────────────── -->
+<text x="400" y="24" text-anchor="middle"
+  font-family="system-ui,-apple-system,sans-serif"
+  font-size="10" letter-spacing="3.5" fill="#2A3F55"
+  font-weight="500">SERIAL CONNECTION PINMAP</text>
+
+<!-- ════════════════════════════════════════════════════
+     Raspberry Pi 5 block  (x: 22–240, y: 36–426)
+     ════════════════════════════════════════════════════ -->
+<rect x="22" y="36" width="218" height="390" rx="6" fill="#111C2A" stroke="#1C2D40" stroke-width="1"/>
+<!-- Red top accent -->
+<rect x="22" y="36" width="218" height="5" rx="3" fill="#C51A4A"/>
+
+<!-- Title -->
+<text x="131" y="63"
+  text-anchor="middle"
+  font-family="system-ui,-apple-system,sans-serif"
+  font-size="13" font-weight="600" fill="#EDF2F7">Raspberry Pi 5</text>
+<text x="131" y="77"
+  text-anchor="middle"
+  font-family="'Courier New','Lucida Console',monospace"
+  font-size="8" letter-spacing="2" fill="#C51A4A">40-PIN GPIO HEADER</text>
+
+<line x1="36" y1="86" x2="226" y2="86" stroke="#1C2D40" stroke-width="1"/>
+
+<!-- Column headers -->
+<text x="57" y="100" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="7.5" fill="#2A3F55" letter-spacing="0.5">PIN</text>
+<text x="142" y="100" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="7.5" fill="#2A3F55" letter-spacing="0.5">SIGNAL</text>
+
+<!-- ── Pi Row 1: PIN 1 · 3.3V ──────────── y=118 -->
+<rect x="36" y="110" width="38" height="16" rx="3" fill="#151F2C"/>
+<text x="55" y="121" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="9" fill="#2E4460">PIN 1</text>
+<rect x="82" y="110" width="44" height="16" rx="3" fill="#281318"/>
+<text x="104" y="121" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#E63946">3.3V</text>
+<text x="131" y="121"
+  font-family="'Courier New',monospace" font-size="8" fill="#4A2226">PWR</text>
+<line x1="152" y1="118" x2="238" y2="118" stroke="#E63946" stroke-width="1" stroke-opacity="0.35"/>
+<circle cx="238" cy="118" r="4.5" fill="#E63946"/>
+
+<!-- ── Pi Row 2: PIN 6 · GND ─────────────  y=170 -->
+<rect x="36" y="162" width="38" height="16" rx="3" fill="#151F2C"/>
+<text x="55" y="173" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="9" fill="#2E4460">PIN 6</text>
+<rect x="82" y="162" width="44" height="16" rx="3" fill="#181C24"/>
+<text x="104" y="173" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#8896A8">GND</text>
+<line x1="134" y1="170" x2="238" y2="170" stroke="#586478" stroke-width="1" stroke-opacity="0.35"/>
+<circle cx="238" cy="170" r="4.5" fill="#586478"/>
+
+<!-- ── Pi Row 3: PIN 8 · GPIO14 · TXD ────  y=222 -->
+<rect x="36" y="214" width="38" height="16" rx="3" fill="#151F2C"/>
+<text x="55" y="225" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="9" fill="#2E4460">PIN 8</text>
+<rect x="82" y="214" width="64" height="16" rx="3" fill="#26190C"/>
+<text x="114" y="225" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#E8924A">GPIO14</text>
+<text x="151" y="225"
+  font-family="'Courier New',monospace" font-size="8" fill="#5C4020">TXD</text>
+<line x1="172" y1="222" x2="238" y2="222" stroke="#E8924A" stroke-width="1" stroke-opacity="0.35"/>
+<circle cx="238" cy="222" r="4.5" fill="#E8924A"/>
+
+<!-- ── Pi Row 4: PIN 10 · GPIO15 · RXD ───  y=274 -->
+<rect x="36" y="266" width="38" height="16" rx="3" fill="#151F2C"/>
+<text x="55" y="277" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="9" fill="#2E4460">PIN 10</text>
+<rect x="82" y="266" width="64" height="16" rx="3" fill="#201C0A"/>
+<text x="114" y="277" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#D4B830">GPIO15</text>
+<text x="151" y="277"
+  font-family="'Courier New',monospace" font-size="8" fill="#5A4A18">RXD</text>
+<line x1="172" y1="274" x2="238" y2="274" stroke="#D4B830" stroke-width="1" stroke-opacity="0.35"/>
+<circle cx="238" cy="274" r="4.5" fill="#D4B830"/>
+
+<!-- Pi notes section -->
+<line x1="36" y1="312" x2="226" y2="312" stroke="#1C2D40" stroke-width="1"/>
+<text x="131" y="330" text-anchor="middle"
+  font-family="system-ui,sans-serif" font-size="9" fill="#2A3F55">⚠  3.3V 핀 공급 한계 ~50 mA</text>
+<text x="131" y="346" text-anchor="middle"
+  font-family="system-ui,sans-serif" font-size="9" fill="#2A3F55">ESP8266 최대 소모 500 mA</text>
+<rect x="36" y="356" width="190" height="26" rx="4" fill="#0A1520" stroke="#1C3A28" stroke-width="1"/>
+<text x="131" y="368" text-anchor="middle"
+  font-family="system-ui,sans-serif" font-size="8.5" fill="#2A6040">→ 외부 3.3V 전원 사용 권장</text>
+<text x="131" y="380" text-anchor="middle"
+  font-family="system-ui,sans-serif" font-size="8.5" fill="#2A6040">또는 Pi Pin 1 (저전력 시에만)</text>
+<text x="131" y="406" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="8" fill="#1C2D40">TX → RX  /  RX → TX  (교차 연결)</text>
+
+<!-- ════════════════════════════════════════════════════
+     ESP-12F block  (x: 560–778, y: 36–426)
+     ════════════════════════════════════════════════════ -->
+<rect x="560" y="36" width="218" height="390" rx="6" fill="#111C2A" stroke="#1C2D40" stroke-width="1"/>
+<!-- Blue top accent -->
+<rect x="560" y="36" width="218" height="5" rx="3" fill="#2986AB"/>
+
+<!-- Title -->
+<text x="669" y="63"
+  text-anchor="middle"
+  font-family="system-ui,-apple-system,sans-serif"
+  font-size="13" font-weight="600" fill="#EDF2F7">ESP-12F</text>
+<text x="669" y="77"
+  text-anchor="middle"
+  font-family="'Courier New','Lucida Console',monospace"
+  font-size="8" letter-spacing="2" fill="#2986AB">ESP8266MOD · 3.3V</text>
+
+<line x1="574" y1="86" x2="764" y2="86" stroke="#1C2D40" stroke-width="1"/>
+
+<!-- Column headers -->
+<text x="578" y="100"
+  font-family="'Courier New',monospace" font-size="7.5" fill="#2A3F55" letter-spacing="0.5">SIGNAL</text>
+<text x="680" y="100"
+  font-family="'Courier New',monospace" font-size="7.5" fill="#2A3F55" letter-spacing="0.5">FUNCTION</text>
+
+<!-- ── ESP Row 1: VCC ─────────────────────  y=118 -->
+<circle cx="562" cy="118" r="4.5" fill="#E63946"/>
+<line x1="567" y1="118" x2="574" y2="118" stroke="#E63946" stroke-width="1" stroke-opacity="0.35"/>
+<rect x="574" y="110" width="40" height="16" rx="3" fill="#281318"/>
+<text x="594" y="121" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#E63946">VCC</text>
+<text x="622" y="121"
+  font-family="'Courier New',monospace" font-size="8" fill="#4A2226">3.3V 전원</text>
+
+<!-- ── ESP Row 2: GND ─────────────────────  y=170 -->
+<circle cx="562" cy="170" r="4.5" fill="#586478"/>
+<line x1="567" y1="170" x2="574" y2="170" stroke="#586478" stroke-width="1" stroke-opacity="0.35"/>
+<rect x="574" y="162" width="40" height="16" rx="3" fill="#181C24"/>
+<text x="594" y="173" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#8896A8">GND</text>
+<text x="622" y="173"
+  font-family="'Courier New',monospace" font-size="8" fill="#303C4A">공통 접지</text>
+
+<!-- ── ESP Row 3: GPIO3 · RX ──────────────  y=222 -->
+<circle cx="562" cy="222" r="4.5" fill="#E8924A"/>
+<line x1="567" y1="222" x2="574" y2="222" stroke="#E8924A" stroke-width="1" stroke-opacity="0.35"/>
+<rect x="574" y="214" width="52" height="16" rx="3" fill="#26190C"/>
+<text x="600" y="225" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#E8924A">GPIO3</text>
+<text x="633" y="225"
+  font-family="'Courier New',monospace" font-size="8" fill="#5C4020">RX  ← 수신</text>
+
+<!-- ── ESP Row 4: GPIO1 · TX ──────────────  y=274 -->
+<circle cx="562" cy="274" r="4.5" fill="#D4B830"/>
+<line x1="567" y1="274" x2="574" y2="274" stroke="#D4B830" stroke-width="1" stroke-opacity="0.35"/>
+<rect x="574" y="266" width="52" height="16" rx="3" fill="#201C0A"/>
+<text x="600" y="277" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#D4B830">GPIO1</text>
+<text x="633" y="277"
+  font-family="'Courier New',monospace" font-size="8" fill="#5A4A18">TX  → 송신</text>
+
+<!-- ESP notes section -->
+<line x1="574" y1="312" x2="764" y2="312" stroke="#1C2D40" stroke-width="1"/>
+
+<!-- EN row -->
+<rect x="574" y="320" width="188" height="16" rx="3" fill="#0C1820"/>
+<text x="581" y="331"
+  font-family="'Courier New',monospace" font-size="9" fill="#2A6040">EN (CH_PD)  →  3.3V   항상 HIGH</text>
+
+<!-- GPIO0 flash row (dashed border highlight) -->
+<rect x="574" y="342" width="188" height="16" rx="3" fill="#0A1820" stroke="#2E5A7A" stroke-width="0.8" stroke-dasharray="3,2"/>
+<text x="581" y="353"
+  font-family="'Courier New',monospace" font-size="9" fill="#3A7AAA">GPIO0  →  GND    플래시 시에만</text>
+
+<!-- GPIO2 row -->
+<rect x="574" y="364" width="188" height="16" rx="3" fill="#0C1820"/>
+<text x="581" y="375"
+  font-family="'Courier New',monospace" font-size="9" fill="#2A3F55">GPIO2  →  오픈   GND 연결 금지</text>
+
+<!-- GPIO15 row -->
+<rect x="574" y="386" width="188" height="16" rx="3" fill="#0C1820"/>
+<text x="581" y="397"
+  font-family="'Courier New',monospace" font-size="9" fill="#2A3F55">GPIO15  →  내부 풀다운 (자동)</text>
+
+<!-- ════════════════════════════════════════════════════
+     Wires  (x: 238 → 562)
+     ════════════════════════════════════════════════════ -->
+
+<!-- 3.3V wire (RED) y=118 -->
+<line x1="243" y1="118" x2="557" y2="118" stroke="#E63946" stroke-width="2" fill="none"/>
+
+<!-- GND wire (SLATE) y=170 -->
+<line x1="243" y1="170" x2="557" y2="170" stroke="#586478" stroke-width="2" fill="none"/>
+
+<!-- TX → RX wire (AMBER) y=222, arrowhead at ESP end -->
+<line x1="243" y1="222" x2="553" y2="222"
+  stroke="#E8924A" stroke-width="2" fill="none"
+  marker-end="url(#ah-tx)"/>
+
+<!-- RX ← TX wire (YELLOW) y=274, arrowhead at Pi end -->
+<line x1="247" y1="274" x2="557" y2="274"
+  stroke="#D4B830" stroke-width="2" fill="none"
+  marker-start="url(#ah-rx)"/>
+
+<!-- ── Midpoint labels ── -->
+<!-- 3.3V label: y=118 -->
+<rect x="352" y="110" width="96" height="14" rx="2" fill="#0E1823"/>
+<text x="400" y="120" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="8" fill="#5A2028">전원  3.3V</text>
+
+<!-- GND label: y=170 -->
+<rect x="362" y="162" width="76" height="14" rx="2" fill="#0E1823"/>
+<text x="400" y="172" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="8" fill="#38404E">공통 접지</text>
+
+<!-- TX→RX label: y=222 -->
+<rect x="340" y="213" width="120" height="14" rx="2" fill="#0E1823"/>
+<text x="400" y="223" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="8" fill="#7A5230">Pi TX  →  ESP RX</text>
+
+<!-- RX←TX label: y=274 -->
+<rect x="340" y="265" width="120" height="14" rx="2" fill="#0E1823"/>
+<text x="400" y="275" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="8" fill="#706220">Pi RX  ←  ESP TX</text>
+
+<!-- ════════════════════════════════════════════════════
+     Flash mode callout  (bottom center)
+     ════════════════════════════════════════════════════ -->
+<rect x="168" y="443" width="464" height="58" rx="6"
+  fill="#090F18" stroke="#2E5A7A" stroke-width="1" stroke-dasharray="5,3"/>
+
+<text x="400" y="462" text-anchor="middle"
+  font-family="system-ui,sans-serif"
+  font-size="10" font-weight="600" fill="#3A7AAA" letter-spacing="1">⚡  플래시 모드 진입 순서</text>
+
+<text x="400" y="479" text-anchor="middle"
+  font-family="'Courier New',monospace"
+  font-size="9" fill="#2E5A7A">
+  <tspan>GPIO0 → GND  연결</tspan>
+  <tspan fill="#1E3A4A">  →  </tspan>
+  <tspan>전원 투입</tspan>
+  <tspan fill="#1E3A4A">  →  </tspan>
+  <tspan>업로드</tspan>
+  <tspan fill="#1E3A4A">  →  </tspan>
+  <tspan>GPIO0 해제</tspan>
+  <tspan fill="#1E3A4A">  →  </tspan>
+  <tspan>재부팅</tspan>
+</text>
+
+<text x="400" y="494" text-anchor="middle"
+  font-family="'Courier New',monospace"
+  font-size="8" fill="#1E3A50">upload_speed = 460800  ·  port = /dev/serial0</text>
+
+</svg>
