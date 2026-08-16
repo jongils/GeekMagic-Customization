@@ -201,6 +201,23 @@ y=239  └────────────────┘
 
 ---
 
+## 시계 화면 구성 (Theme 4 기본)
+
+```
+y= 34: 날짜  "2026.08.17  MON"   size 2, 회색, 중앙
+y= 56: ─────── 구분선 ───────
+y= 70: HH:MM                    size 6 (48px), CYAN, 중앙
+y=127: :SS                      size 3 (24px), 회색, 중앙
+y=210: 🦀 게 아이콘 좌우 애니메이션
+```
+
+- 게 아이콘: `clock_theme.cpp`의 `iconDraw()` — TFT 프리미티브로 직접 그림
+- 색상: `COL_CLAUDE = 0xDBCA` (Claude 코랄 ~RGB 222,121,82)
+- 이동 범위: x 28 ~ 211, 왕복 10초 주기
+- `clockAnimUpdate()` → `main.cpp`의 `loop()`에서 매 프레임 호출 (~60 fps)
+
+---
+
 ## 소스 구조
 
 ```
@@ -208,19 +225,31 @@ firmware/
 ├── platformio.ini
 ├── src/
 │   ├── main.cpp             ← 진입점 (setup/loop, 모드 기반 렌더링)
-│   ├── config.h             ← 전역 상수
+│   ├── config.h             ← 전역 상수 + BEZEL_* / SAFE_* 상수
 │   ├── display.cpp/.h       ← TFT_eSPI 래퍼
 │   ├── draw_cmd.cpp/.h      ← JSON 드로잉 커맨드 파서·렌더러
 │   ├── http_server.cpp/.h   ← HTTP API 서버 (포트 80)
 │   ├── filesystem.cpp/.h    ← LittleFS
 │   ├── jpeg_display.cpp/.h  ← JPEG → TFT 스트리밍
-│   └── clock_theme.cpp/.h   ← 기본 시계 (clock 모드)
-└── diag/
-    └── main.cpp             ← 핀 탐색 진단 유틸리티
+│   └── clock_theme.cpp/.h   ← 시계 렌더링 + 🦀 애니메이션
+├── diag/
+│   └── main.cpp             ← 핀 탐색 진단 유틸리티
+└── diag_bezel/
+    └── main.cpp             ← 베젤 경계 테스트 (확정 경계선 시각화)
 
 pi/
 └── draw_client.py           ← Pi용 드로잉 커맨드 클라이언트
 ```
+
+### 빌드 환경
+
+| 환경 | 용도 |
+|------|------|
+| `esp8266` | 메인 펌웨어 빌드 + 시리얼 플래시 |
+| `esp8266_ota` | 메인 펌웨어 OTA (실제로는 curl 사용) |
+| `esp8266_diag` | 핀 진단 펌웨어 (`diag/`) |
+| `esp8266_bezel` | 베젤 경계 테스트 펌웨어 (`diag_bezel/`) |
+| `esp8266_bezel_ota` | 베젤 펌웨어 OTA 빌드 |
 
 ---
 

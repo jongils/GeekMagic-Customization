@@ -146,6 +146,38 @@ cd firmware
 
 ---
 
+## 11. 시계 화면 레이아웃 (Theme 4 — 기본값)
+
+```
+y= 34: 날짜 "2026.08.17  MON"  size 2, COL_GREY, 중앙
+y= 56: 구분선
+y= 70: HH:MM                   size 6 (48px), COL_CYAN, 중앙
+y=127: :SS                     size 3 (24px), COL_GREY, 중앙
+y=210: 🦀 게 아이콘 애니메이션 (좌우 왕복)
+```
+
+**게 아이콘 (`clock_theme.cpp`)**
+- `COL_CLAUDE = 0xDBCA` — Claude 코랄 단색 (tft.color565(222,121,82))
+- `iconDraw()` / `iconErase()` — TFT 프리미티브(fillCircle, drawLine)로 직접 렌더링
+- 이동 범위: x 28~211, 왕복 10초 삼각파
+- `clockAnimUpdate()` — loop()에서 매 프레임 호출, 16ms 이하 간격은 스킵
+
+**렌더링 구조**
+- 1초 Ticker → `clockThemeRender()` — 시간/날짜 텍스트 갱신
+- 매 loop() → `clockAnimUpdate()` — 게 아이콘 위치 갱신 (~60 fps)
+
+---
+
+## 12. 색상 상수 위치
+
+| 상수 | 값 | 정의 위치 |
+|------|----|-----------|
+| `COL_CYAN`, `COL_GREY`, `COL_WHITE` 등 | 표준 TFT 색상 | `display.h` |
+| `COL_CLAUDE` | `0xDBCA` (코랄) | `clock_theme.cpp` (로컬) |
+| `BEZEL_*`, `SAFE_*` | 베젤/안전 영역 | `config.h` |
+
+---
+
 ## 9. WiFi 없는 펌웨어는 절대 플래시하지 말 것
 
 OTA 복구 엔드포인트(`/update`)가 없으면 시리얼 플래시만이 유일한 복구 수단.
