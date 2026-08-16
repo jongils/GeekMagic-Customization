@@ -89,39 +89,56 @@ ls -la /dev/serial0
 
 ## 3. 하드웨어 연결 (Pi ↔ ESP8266)
 
-![Pi 5 ↔ ESP-12F 핀맵](docs/pinmap.svg)
+![Pi 5 ↔ GeekMagic ESP8266 시리얼 핀맵](docs/pinmap.svg)
 
-### 시리얼 핀 연결 (플래시 전용)
+### GeekMagic SmallTV Ultra 시리얼 커넥터 (6핀)
 
-| Raspberry Pi 5 | GPIO | ESP8266 |
-|----------------|------|---------|
-| Pin 8 (TXD)    | GPIO14 | RX |
-| Pin 10 (RXD)   | GPIO15 | TX |
-| Pin 6 (GND)    | GND  | GND |
-| —              | —    | VCC → 외부 3.3V 전원 |
+보드에 노출된 프로그래밍 패드의 물리 핀 순서입니다.
 
-> TX → RX, RX → TX 교차 연결.
+| 핀 # | 신호 | 용도 |
+|------|------|------|
+| 1 | **GND** | 공통 접지 |
+| 2 | **TX** | ESP8266 송신 → Pi RX |
+| 3 | **RX** | ESP8266 수신 ← Pi TX |
+| 4 | **VCC** | 3.3V 전원 입력 |
+| 5 | **GPIO0** | GND 단락 시 플래시 모드 진입 |
+| 6 | **RST** | 리셋 (선택, 보통 오픈) |
+
+> PIN 1 위치는 보드 실크 또는 엣지 마킹으로 확인하세요.
+
+### Pi ↔ 보드 배선
+
+| Raspberry Pi 5 | 보드 핀 # | 신호 |
+|----------------|-----------|------|
+| Pin 6  (GND)         | **PIN 1** | GND |
+| Pin 10 (GPIO15 / RXD) | **PIN 2** | TX → Pi RX |
+| Pin 8  (GPIO14 / TXD) | **PIN 3** | RX ← Pi TX |
+| 외부 3.3V 전원        | **PIN 4** | VCC |
+
+> TX↔RX 교차 연결. Pi 3.3V Pin 1(~50 mA)로는 전류 부족할 수 있으므로 외부 전원 권장.
 
 ### 플래시 모드 진입
 
-GPIO0 → GND 연결 상태로 전원 투입 시 부트로더 모드 진입.
+PIN 5 (GPIO0) → PIN 1 (GND) 단락 상태로 전원 투입 시 부트로더 진입.
 
 ```
-ESP8266 GPIO0 ─┐
-ESP8266 GND   ─┘  (점퍼 또는 스위치)
+보드 PIN 5 (GPIO0) ─┐
+보드 PIN 1 (GND)   ─┘  (점퍼 또는 핀셋으로 단락)
 ```
 
 ### 배선 다이어그램
 
 ```
-Raspberry Pi 5               ESP8266
-┌──────────────┐             ┌──────────────┐
-│ GPIO14 (TXD) ├────────────►│ RX           │
-│ GPIO15 (RXD) │◄────────────┤ TX           │
-│ GND          ├─────────────┤ GND          │
-└──────────────┘             │ GPIO0 ──┐    │  ← 플래시 시에만
-                             │ GND  ───┘    │
-                             └──────────────┘
+Raspberry Pi 5              GeekMagic Board (6-pin)
+                            ┌──────────────┐
+                            │ 1  GND       │◄──── Pi Pin 6  (GND)
+                            │ 2  TX        │────► Pi Pin 10 (GPIO15 RXD)
+Pi Pin 8  (GPIO14 TXD) ───► │ 3  RX        │
+Pi Pin 1  (3.3V) ─────────► │ 4  VCC       │
+                            │ 5  GPIO0 ──┐ │  ← 플래시 시 GND와 단락
+                            │ 1  GND  ───┘ │
+                            │ 6  RST       │  ← 오픈 (사용 안 함)
+                            └──────────────┘
 ```
 
 > **WiFi 연결 후에는 OTA(`/update`)로 업데이트**하므로 시리얼 연결은 최초 1회만 필요합니다.
