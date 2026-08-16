@@ -36,6 +36,24 @@
 #define DISPLAY_W  240
 #define DISPLAY_H  240
 
+// Physical bezel margins (measured with diag_bezel rect test, 5px steps)
+//   TOP    : CYAN  s=0  → 0~4px hidden → use 5 as safe margin
+//   LEFT   : YELLOW s=5 → 5px hidden
+//   RIGHT  : YELLOW s=5 → 5px hidden
+//   BOTTOM : GREEN  s=10→ 10px hidden
+#define BEZEL_TOP     5
+#define BEZEL_LEFT    5
+#define BEZEL_RIGHT   5
+#define BEZEL_BOTTOM  10
+
+// Safe drawing area (pixels guaranteed to be visible)
+#define SAFE_X   BEZEL_LEFT
+#define SAFE_Y   BEZEL_TOP
+#define SAFE_W   (DISPLAY_W - BEZEL_LEFT - BEZEL_RIGHT)   // 230
+#define SAFE_H   (DISPLAY_H - BEZEL_TOP  - BEZEL_BOTTOM)  // 225
+#define SAFE_X2  (DISPLAY_W - BEZEL_RIGHT  - 1)           // 234
+#define SAFE_Y2  (DISPLAY_H - BEZEL_BOTTOM - 1)           // 229
+
 // Weather cache interval (ms)
 #define WEATHER_INTERVAL_MS  (10UL * 60 * 1000)
 
