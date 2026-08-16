@@ -45,13 +45,8 @@ static void renderTheme4(const struct tm &t) {
         displayRect(SAFE_X, 34, SAFE_W, 16, TFT_BLACK);
         displayTextCentre(SAFE_X, 34, SAFE_W, dateBuf, COL_GREY, 2);
 
-        // Separators
+        // Separator below date
         displayHLine(SAFE_X, 56, SAFE_W, COL_GREY);
-        displayHLine(SAFE_X, 170, SAFE_W, COL_GREY);
-
-        // Weekday full name
-        displayRect(SAFE_X, 184, SAFE_W, 16, TFT_BLACK);
-        displayTextCentre(SAFE_X, 184, SAFE_W, WDAY_FULL[t.tm_wday], COL_WHITE, 2);
 
         _lastWday = t.tm_wday;
     }
