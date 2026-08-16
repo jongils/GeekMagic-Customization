@@ -1,266 +1,248 @@
 <svg viewBox="0 0 800 545" xmlns="http://www.w3.org/2000/svg" role="img">
 <title>Pi 5 ↔ GeekMagic ESP8266 시리얼 핀맵</title>
-<desc>Raspberry Pi 5 GPIO와 GeekMagic SmallTV Ultra 시리얼 커넥터(6핀) 배선도. 플래시 및 OTA 개발용.</desc>
+<desc>Raspberry Pi 5 GPIO와 GeekMagic SmallTV Ultra 시리얼 커넥터(6핀) 배선도.</desc>
 
 <defs>
-  <!-- TX arrowhead: points right → ESP RX -->
   <marker id="ah-tx" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
-    <polygon points="0,0 7,2.5 0,5" fill="#C07838"/>
+    <polygon points="0,0 7,2.5 0,5" fill="#C06020"/>
   </marker>
-  <!-- RX arrowhead: points left ← ESP TX -->
   <marker id="ah-rx" markerWidth="7" markerHeight="5" refX="0" refY="2.5" orient="auto">
-    <polygon points="7,0 0,2.5 7,5" fill="#A89230"/>
+    <polygon points="7,0 0,2.5 7,5" fill="#8A7010"/>
   </marker>
 </defs>
 
 <!-- Background -->
-<rect width="800" height="545" fill="#0E1823"/>
-<pattern id="grid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-  <circle cx="1" cy="1" r="0.8" fill="#131D2A"/>
-</pattern>
-<rect width="800" height="545" fill="url(#grid)"/>
+<rect width="800" height="545" fill="#F0F4F8"/>
 
 <!-- Page title -->
 <text x="400" y="24" text-anchor="middle"
   font-family="system-ui,-apple-system,sans-serif"
-  font-size="10" letter-spacing="3.5" fill="#263548" font-weight="500">SERIAL CONNECTION PINMAP</text>
+  font-size="10" letter-spacing="3.5" fill="#8098B0" font-weight="600">SERIAL CONNECTION PINMAP</text>
 
 <!-- ════════════════════════════════════
-     Raspberry Pi 5  (x:22–240, h:420)
+     Raspberry Pi 5
      ════════════════════════════════════ -->
-<rect x="22" y="36" width="218" height="420" rx="6" fill="#111C2A" stroke="#1C2D40" stroke-width="1"/>
-<rect x="22" y="36" width="218" height="5" rx="3" fill="#C51A4A"/>
+<rect x="22" y="36" width="218" height="420" rx="6" fill="#FFFFFF" stroke="#D8E2EC" stroke-width="1.5"/>
+<rect x="22" y="36" width="218" height="6" rx="3" fill="#C51A4A"/>
 
-<text x="131" y="63" text-anchor="middle"
+<text x="131" y="64" text-anchor="middle"
   font-family="system-ui,-apple-system,sans-serif"
-  font-size="13" font-weight="600" fill="#EDF2F7">Raspberry Pi 5</text>
-<text x="131" y="78" text-anchor="middle"
+  font-size="13" font-weight="700" fill="#1A2538">Raspberry Pi 5</text>
+<text x="131" y="79" text-anchor="middle"
   font-family="'Courier New','Lucida Console',monospace"
   font-size="8" letter-spacing="2" fill="#C51A4A">40-PIN GPIO HEADER</text>
 
-<line x1="36" y1="87" x2="226" y2="87" stroke="#1C2D40" stroke-width="1"/>
+<line x1="36" y1="88" x2="226" y2="88" stroke="#E2EAF2" stroke-width="1.5"/>
 
-<text x="57" y="101" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="7.5" fill="#263548" letter-spacing="0.5">PIN</text>
-<text x="148" y="101" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="7.5" fill="#263548" letter-spacing="0.5">SIGNAL</text>
+<text x="57" y="102" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="7.5" fill="#90A8C0">PIN</text>
+<text x="148" y="102" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="7.5" fill="#90A8C0">SIGNAL</text>
 
 <!-- Pi Row 1: PIN 6 · GND  y=118 -->
-<rect x="36" y="110" width="38" height="16" rx="3" fill="#151F2C"/>
+<rect x="36" y="110" width="38" height="16" rx="3" fill="#EEF2F8"/>
 <text x="55" y="121" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="9" fill="#2E4460">PIN 6</text>
-<rect x="82" y="110" width="44" height="16" rx="3" fill="#181C24"/>
+  font-family="'Courier New',monospace" font-size="9" fill="#607080">PIN 6</text>
+<rect x="82" y="110" width="44" height="16" rx="3" fill="#E8ECF4"/>
 <text x="104" y="121" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#8896A8">GND</text>
-<line x1="134" y1="118" x2="238" y2="118" stroke="#586478" stroke-width="1" stroke-opacity="0.35"/>
-<circle cx="238" cy="118" r="4.5" fill="#586478"/>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#3A5068">GND</text>
+<line x1="134" y1="118" x2="238" y2="118" stroke="#7090A8" stroke-width="1" stroke-opacity="0.4"/>
+<circle cx="238" cy="118" r="4.5" fill="#5A7890"/>
 
 <!-- Pi Row 2: PIN 10 · GPIO15 · RXD  y=170 -->
-<rect x="36" y="162" width="38" height="16" rx="3" fill="#151F2C"/>
+<rect x="36" y="162" width="38" height="16" rx="3" fill="#EEF2F8"/>
 <text x="55" y="173" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="9" fill="#2E4460">PIN 10</text>
-<rect x="82" y="162" width="64" height="16" rx="3" fill="#201C0A"/>
+  font-family="'Courier New',monospace" font-size="9" fill="#607080">PIN 10</text>
+<rect x="82" y="162" width="64" height="16" rx="3" fill="#FBF6DC"/>
 <text x="114" y="173" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#D4B830">GPIO15</text>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#8A7010">GPIO15</text>
 <text x="151" y="173"
-  font-family="'Courier New',monospace" font-size="8" fill="#5A4A18">RXD</text>
-<line x1="172" y1="170" x2="238" y2="170" stroke="#D4B830" stroke-width="1" stroke-opacity="0.35"/>
-<circle cx="238" cy="170" r="4.5" fill="#D4B830"/>
+  font-family="'Courier New',monospace" font-size="8" fill="#A09040">RXD</text>
+<line x1="172" y1="170" x2="238" y2="170" stroke="#C8A820" stroke-width="1" stroke-opacity="0.4"/>
+<circle cx="238" cy="170" r="4.5" fill="#C8A820"/>
 
 <!-- Pi Row 3: PIN 8 · GPIO14 · TXD  y=222 -->
-<rect x="36" y="214" width="38" height="16" rx="3" fill="#151F2C"/>
+<rect x="36" y="214" width="38" height="16" rx="3" fill="#EEF2F8"/>
 <text x="55" y="225" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="9" fill="#2E4460">PIN 8</text>
-<rect x="82" y="214" width="64" height="16" rx="3" fill="#26190C"/>
+  font-family="'Courier New',monospace" font-size="9" fill="#607080">PIN 8</text>
+<rect x="82" y="214" width="64" height="16" rx="3" fill="#FDF0E4"/>
 <text x="114" y="225" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#E8924A">GPIO14</text>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#C06020">GPIO14</text>
 <text x="151" y="225"
-  font-family="'Courier New',monospace" font-size="8" fill="#5C4020">TXD</text>
-<line x1="172" y1="222" x2="238" y2="222" stroke="#E8924A" stroke-width="1" stroke-opacity="0.35"/>
-<circle cx="238" cy="222" r="4.5" fill="#E8924A"/>
+  font-family="'Courier New',monospace" font-size="8" fill="#B07840">TXD</text>
+<line x1="172" y1="222" x2="238" y2="222" stroke="#D87830" stroke-width="1" stroke-opacity="0.4"/>
+<circle cx="238" cy="222" r="4.5" fill="#D87830"/>
 
 <!-- Pi Row 4: PIN 1 · 3.3V  y=274 -->
-<rect x="36" y="266" width="38" height="16" rx="3" fill="#151F2C"/>
+<rect x="36" y="266" width="38" height="16" rx="3" fill="#EEF2F8"/>
 <text x="55" y="277" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="9" fill="#2E4460">PIN 1</text>
-<rect x="82" y="266" width="44" height="16" rx="3" fill="#281318"/>
+  font-family="'Courier New',monospace" font-size="9" fill="#607080">PIN 1</text>
+<rect x="82" y="266" width="44" height="16" rx="3" fill="#FDEAEC"/>
 <text x="104" y="277" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#E63946">3.3V</text>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#C01828">3.3V</text>
 <text x="131" y="277"
-  font-family="'Courier New',monospace" font-size="8" fill="#4A2226">PWR</text>
-<line x1="152" y1="274" x2="238" y2="274" stroke="#E63946" stroke-width="1" stroke-opacity="0.35"/>
-<circle cx="238" cy="274" r="4.5" fill="#E63946"/>
+  font-family="'Courier New',monospace" font-size="8" fill="#C04050">PWR</text>
+<line x1="152" y1="274" x2="238" y2="274" stroke="#D82030" stroke-width="1" stroke-opacity="0.4"/>
+<circle cx="238" cy="274" r="4.5" fill="#D82030"/>
 
 <!-- Pi notes -->
-<line x1="36" y1="312" x2="226" y2="312" stroke="#1C2D40" stroke-width="1"/>
+<line x1="36" y1="312" x2="226" y2="312" stroke="#E2EAF2" stroke-width="1.5"/>
 <text x="131" y="330" text-anchor="middle"
-  font-family="system-ui,sans-serif" font-size="9" fill="#263548">⚠  3.3V Pin 1 최대 ~50 mA</text>
+  font-family="system-ui,sans-serif" font-size="9" fill="#7090A8">⚠  3.3V Pin 1 최대 ~50 mA</text>
 <text x="131" y="346" text-anchor="middle"
-  font-family="system-ui,sans-serif" font-size="9" fill="#263548">ESP8266 최대 소모 500 mA</text>
-<rect x="36" y="357" width="190" height="26" rx="4" fill="#0A1520" stroke="#1C3A28" stroke-width="1"/>
+  font-family="system-ui,sans-serif" font-size="9" fill="#7090A8">ESP8266 최대 소모 500 mA</text>
+<rect x="36" y="357" width="190" height="26" rx="4" fill="#EEF8F2" stroke="#B0D8C0" stroke-width="1"/>
 <text x="131" y="369" text-anchor="middle"
-  font-family="system-ui,sans-serif" font-size="8.5" fill="#2A6040">→ 외부 3.3V 전원 사용 권장</text>
+  font-family="system-ui,sans-serif" font-size="8.5" fill="#2A7848">→ 외부 3.3V 전원 사용 권장</text>
 <text x="131" y="381" text-anchor="middle"
-  font-family="system-ui,sans-serif" font-size="8.5" fill="#2A6040">또는 Pi Pin 1 (저전력 시에만)</text>
-<text x="131" y="405" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="8" fill="#1C2D40">TX ↔ RX 교차 연결 필수</text>
+  font-family="system-ui,sans-serif" font-size="8.5" fill="#2A7848">또는 Pi Pin 1 (저전력 시에만)</text>
+<text x="131" y="406" text-anchor="middle"
+  font-family="'Courier New',monospace" font-size="8" fill="#90A8C0">TX ↔ RX 교차 연결 필수</text>
 <text x="131" y="420" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="8" fill="#1C2D40">WiFi 연결 후에는 OTA 사용</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#90A8C0">WiFi 연결 후에는 OTA 사용</text>
 
 <!-- ════════════════════════════════════
-     GeekMagic Board  (x:560–778, h:420)
+     GeekMagic Board
      ════════════════════════════════════ -->
-<rect x="560" y="36" width="218" height="420" rx="6" fill="#111C2A" stroke="#1C2D40" stroke-width="1"/>
-<rect x="560" y="36" width="218" height="5" rx="3" fill="#2986AB"/>
+<rect x="560" y="36" width="218" height="420" rx="6" fill="#FFFFFF" stroke="#D8E2EC" stroke-width="1.5"/>
+<rect x="560" y="36" width="218" height="6" rx="3" fill="#2986AB"/>
 
 <text x="669" y="58" text-anchor="middle"
   font-family="system-ui,-apple-system,sans-serif"
-  font-size="11" font-weight="600" fill="#EDF2F7">GeekMagic SmallTV Ultra</text>
-<text x="669" y="73" text-anchor="middle"
+  font-size="11" font-weight="700" fill="#1A2538">GeekMagic SmallTV Ultra</text>
+<text x="669" y="72" text-anchor="middle"
   font-family="system-ui,-apple-system,sans-serif"
-  font-size="9" fill="#8BA8C0">ESP8266 시리얼 커넥터</text>
+  font-size="9" fill="#5A7890">ESP8266 시리얼 커넥터</text>
 <text x="669" y="85" text-anchor="middle"
   font-family="'Courier New','Lucida Console',monospace"
   font-size="8" letter-spacing="2" fill="#2986AB">6-PIN SERIAL PORT</text>
 
-<line x1="574" y1="94" x2="764" y2="94" stroke="#1C2D40" stroke-width="1"/>
+<line x1="574" y1="94" x2="764" y2="94" stroke="#E2EAF2" stroke-width="1.5"/>
 
 <text x="587" y="108" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="7.5" fill="#263548" letter-spacing="0.5">#</text>
+  font-family="'Courier New',monospace" font-size="7.5" fill="#90A8C0">#</text>
 <text x="665" y="108" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="7.5" fill="#263548" letter-spacing="0.5">SIGNAL</text>
+  font-family="'Courier New',monospace" font-size="7.5" fill="#90A8C0">SIGNAL</text>
 
 <!-- Board Pin 1: GND  y=118 -->
-<circle cx="562" cy="118" r="4.5" fill="#586478"/>
-<line x1="567" y1="118" x2="574" y2="118" stroke="#586478" stroke-width="1" stroke-opacity="0.35"/>
-<rect x="574" y="110" width="22" height="16" rx="3" fill="#1A2030"/>
+<circle cx="562" cy="118" r="4.5" fill="#5A7890"/>
+<rect x="574" y="110" width="22" height="16" rx="3" fill="#EEF2F8"/>
 <text x="585" y="121" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#4A6080">1</text>
-<rect x="602" y="110" width="40" height="16" rx="3" fill="#181C24"/>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#3A5878">1</text>
+<rect x="602" y="110" width="40" height="16" rx="3" fill="#E8ECF4"/>
 <text x="622" y="121" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#8896A8">GND</text>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#3A5068">GND</text>
 <text x="648" y="121"
-  font-family="'Courier New',monospace" font-size="8" fill="#303C4A">공통 접지</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#7090A8">공통 접지</text>
 
 <!-- Board Pin 2: TX  y=170 -->
-<circle cx="562" cy="170" r="4.5" fill="#D4B830"/>
-<line x1="567" y1="170" x2="574" y2="170" stroke="#D4B830" stroke-width="1" stroke-opacity="0.35"/>
-<rect x="574" y="162" width="22" height="16" rx="3" fill="#1A2030"/>
+<circle cx="562" cy="170" r="4.5" fill="#C8A820"/>
+<rect x="574" y="162" width="22" height="16" rx="3" fill="#EEF2F8"/>
 <text x="585" y="173" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#4A6080">2</text>
-<rect x="602" y="162" width="30" height="16" rx="3" fill="#201C0A"/>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#3A5878">2</text>
+<rect x="602" y="162" width="30" height="16" rx="3" fill="#FBF6DC"/>
 <text x="617" y="173" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#D4B830">TX</text>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#8A7010">TX</text>
 <text x="638" y="173"
-  font-family="'Courier New',monospace" font-size="8" fill="#5A4A18">→ Pi RX</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#A09040">→ Pi RX</text>
 
 <!-- Board Pin 3: RX  y=222 -->
-<circle cx="562" cy="222" r="4.5" fill="#E8924A"/>
-<line x1="567" y1="222" x2="574" y2="222" stroke="#E8924A" stroke-width="1" stroke-opacity="0.35"/>
-<rect x="574" y="214" width="22" height="16" rx="3" fill="#1A2030"/>
+<circle cx="562" cy="222" r="4.5" fill="#D87830"/>
+<rect x="574" y="214" width="22" height="16" rx="3" fill="#EEF2F8"/>
 <text x="585" y="225" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#4A6080">3</text>
-<rect x="602" y="214" width="30" height="16" rx="3" fill="#26190C"/>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#3A5878">3</text>
+<rect x="602" y="214" width="30" height="16" rx="3" fill="#FDF0E4"/>
 <text x="617" y="225" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#E8924A">RX</text>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#C06020">RX</text>
 <text x="638" y="225"
-  font-family="'Courier New',monospace" font-size="8" fill="#5C4020">← Pi TX</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#B07840">← Pi TX</text>
 
 <!-- Board Pin 4: VCC  y=274 -->
-<circle cx="562" cy="274" r="4.5" fill="#E63946"/>
-<line x1="567" y1="274" x2="574" y2="274" stroke="#E63946" stroke-width="1" stroke-opacity="0.35"/>
-<rect x="574" y="266" width="22" height="16" rx="3" fill="#1A2030"/>
+<circle cx="562" cy="274" r="4.5" fill="#D82030"/>
+<rect x="574" y="266" width="22" height="16" rx="3" fill="#EEF2F8"/>
 <text x="585" y="277" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#4A6080">4</text>
-<rect x="602" y="266" width="40" height="16" rx="3" fill="#281318"/>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#3A5878">4</text>
+<rect x="602" y="266" width="40" height="16" rx="3" fill="#FDEAEC"/>
 <text x="622" y="277" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#E63946">VCC</text>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#C01828">VCC</text>
 <text x="648" y="277"
-  font-family="'Courier New',monospace" font-size="8" fill="#4A2226">3.3V</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#C04050">3.3V</text>
 
 <!-- Board Pin 5: GPIO0  y=326 -->
-<circle cx="562" cy="326" r="4.5" fill="#3A7AAA" stroke="#2E5A7A" stroke-width="0.8" stroke-dasharray="2,1"/>
-<line x1="567" y1="326" x2="574" y2="326" stroke="#3A7AAA" stroke-width="1" stroke-opacity="0.35"/>
-<rect x="574" y="318" width="22" height="16" rx="3" fill="#1A2030"/>
+<circle cx="562" cy="326" r="4.5" fill="#2880B0" stroke="#1A6090" stroke-width="1"/>
+<rect x="574" y="318" width="22" height="16" rx="3" fill="#EEF2F8"/>
 <text x="585" y="329" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#4A6080">5</text>
-<rect x="602" y="318" width="56" height="16" rx="3" fill="#0A1820" stroke="#2E5A7A" stroke-width="0.8" stroke-dasharray="2,1"/>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#3A5878">5</text>
+<rect x="602" y="318" width="56" height="16" rx="3" fill="#E8F4FC" stroke="#90C8E8" stroke-width="1" stroke-dasharray="2,1"/>
 <text x="630" y="329" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="9" font-weight="bold" fill="#3A7AAA">GPIO0</text>
+  font-family="'Courier New',monospace" font-size="9" font-weight="bold" fill="#1870A0">GPIO0</text>
 <text x="664" y="329"
-  font-family="'Courier New',monospace" font-size="7.5" fill="#2E5A7A">→ GND 플래시</text>
+  font-family="'Courier New',monospace" font-size="7.5" fill="#5090B8">→ GND 플래시</text>
 
-<!-- GPIO0 → GND dashed indicator (internal to board side) -->
-<path d="M562,326 Q540,350 562,372" stroke="#2E5A7A" stroke-width="1" stroke-dasharray="3,2" fill="none"/>
-<text x="528" y="358"
-  font-family="'Courier New',monospace" font-size="7" fill="#1E3A50" text-anchor="middle">단락</text>
+<!-- GPIO0 → GND dashed arc -->
+<path d="M562,326 Q540,352 562,370" stroke="#90C8E8" stroke-width="1.2" stroke-dasharray="3,2" fill="none"/>
+<text x="534" y="354"
+  font-family="system-ui,sans-serif" font-size="7" fill="#70A0C0" text-anchor="middle">단락</text>
 
 <!-- Board Pin 6: RST  y=378 -->
-<circle cx="562" cy="378" r="4.5" fill="#3A5068"/>
-<line x1="567" y1="378" x2="574" y2="378" stroke="#3A5068" stroke-width="1" stroke-opacity="0.35"/>
-<rect x="574" y="370" width="22" height="16" rx="3" fill="#1A2030"/>
+<circle cx="562" cy="378" r="4.5" fill="#A0B8C8"/>
+<rect x="574" y="370" width="22" height="16" rx="3" fill="#EEF2F8"/>
 <text x="585" y="381" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#4A6080">6</text>
-<rect x="602" y="370" width="40" height="16" rx="3" fill="#131C28"/>
+  font-family="'Courier New',monospace" font-size="10" font-weight="bold" fill="#3A5878">6</text>
+<rect x="602" y="370" width="40" height="16" rx="3" fill="#F0F4F8"/>
 <text x="622" y="381" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="9" font-weight="bold" fill="#4A6888">RST</text>
+  font-family="'Courier New',monospace" font-size="9" font-weight="bold" fill="#7090A8">RST</text>
 <text x="648" y="381"
-  font-family="'Courier New',monospace" font-size="7.5" fill="#2A3848">오픈 (선택)</text>
+  font-family="'Courier New',monospace" font-size="7.5" fill="#90A8C0">오픈 (선택)</text>
 
 <!-- Board notes -->
-<line x1="574" y1="408" x2="764" y2="408" stroke="#1C2D40" stroke-width="1"/>
+<line x1="574" y1="408" x2="764" y2="408" stroke="#E2EAF2" stroke-width="1.5"/>
 <text x="669" y="426" text-anchor="middle"
-  font-family="system-ui,sans-serif" font-size="8.5" fill="#263548">PIN 1(GND) 기준 순서대로 배열</text>
+  font-family="system-ui,sans-serif" font-size="8.5" fill="#7090A8">PIN 1(GND) 기준 순서대로 배열</text>
 <text x="669" y="442" text-anchor="middle"
-  font-family="system-ui,sans-serif" font-size="8.5" fill="#263548">보드 상단 → PIN 1 위치 확인 필수</text>
+  font-family="system-ui,sans-serif" font-size="8.5" fill="#7090A8">보드 상단 마킹으로 PIN 1 확인</text>
 
 <!-- ════════════════════════════════════
-     Wires  (x: 243 → 557, all same y)
+     Wires
      ════════════════════════════════════ -->
-
-<!-- GND wire  y=118 -->
-<line x1="243" y1="118" x2="557" y2="118" stroke="#586478" stroke-width="2"/>
-
-<!-- Pi RX ← Board TX  y=170, arrowhead at Pi end (left) -->
+<!-- GND  y=118 -->
+<line x1="243" y1="118" x2="557" y2="118" stroke="#5A7890" stroke-width="2"/>
+<!-- Pi RX ← Board TX  y=170 -->
 <line x1="247" y1="170" x2="557" y2="170"
-  stroke="#D4B830" stroke-width="2"
-  marker-start="url(#ah-rx)"/>
-
-<!-- Pi TX → Board RX  y=222, arrowhead at ESP end (right) -->
+  stroke="#C8A820" stroke-width="2" marker-start="url(#ah-rx)"/>
+<!-- Pi TX → Board RX  y=222 -->
 <line x1="243" y1="222" x2="553" y2="222"
-  stroke="#E8924A" stroke-width="2"
-  marker-end="url(#ah-tx)"/>
+  stroke="#D87830" stroke-width="2" marker-end="url(#ah-tx)"/>
+<!-- VCC  y=274 -->
+<line x1="243" y1="274" x2="557" y2="274" stroke="#D82030" stroke-width="2"/>
 
-<!-- VCC wire  y=274 -->
-<line x1="243" y1="274" x2="557" y2="274" stroke="#E63946" stroke-width="2"/>
-
-<!-- ── Midpoint labels ── -->
-<rect x="360" y="110" width="80" height="14" rx="2" fill="#0E1823"/>
+<!-- Midpoint labels -->
+<rect x="360" y="110" width="80" height="14" rx="2" fill="#F0F4F8"/>
 <text x="400" y="120" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="8" fill="#384858">공통 접지</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#6080A0">공통 접지</text>
 
-<rect x="338" y="162" width="124" height="14" rx="2" fill="#0E1823"/>
+<rect x="330" y="162" width="140" height="14" rx="2" fill="#F0F4F8"/>
 <text x="400" y="172" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="8" fill="#706220">Pi RX  ←  Board TX</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#806808">Pi RX  ←  Board TX</text>
 
-<rect x="338" y="214" width="124" height="14" rx="2" fill="#0E1823"/>
+<rect x="330" y="214" width="140" height="14" rx="2" fill="#F0F4F8"/>
 <text x="400" y="224" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="8" fill="#7A5230">Pi TX  →  Board RX</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#905018">Pi TX  →  Board RX</text>
 
-<rect x="360" y="266" width="80" height="14" rx="2" fill="#0E1823"/>
+<rect x="360" y="266" width="80" height="14" rx="2" fill="#F0F4F8"/>
 <text x="400" y="276" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="8" fill="#5A2028">전원  3.3V</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#A01020">전원  3.3V</text>
 
 <!-- ════════════════════════════════════
      Flash mode callout
      ════════════════════════════════════ -->
 <rect x="158" y="472" width="484" height="58" rx="6"
-  fill="#090F18" stroke="#2E5A7A" stroke-width="1" stroke-dasharray="5,3"/>
+  fill="#EEF6FC" stroke="#90C8E8" stroke-width="1.2" stroke-dasharray="5,3"/>
 <text x="400" y="491" text-anchor="middle"
   font-family="system-ui,sans-serif"
-  font-size="10" font-weight="600" fill="#3A7AAA" letter-spacing="1">⚡  플래시 모드 진입 순서</text>
+  font-size="10" font-weight="700" fill="#1870A0" letter-spacing="1">⚡  플래시 모드 진입 순서</text>
 <text x="400" y="508" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="9" fill="#2E5A7A">PIN 5(GPIO0) → PIN 1(GND) 단락  →  전원 투입  →  업로드  →  단락 해제  →  재부팅</text>
+  font-family="'Courier New',monospace" font-size="9" fill="#3080A8">PIN 5(GPIO0) → PIN 1(GND) 단락  →  전원 투입  →  업로드  →  단락 해제  →  재부팅</text>
 <text x="400" y="523" text-anchor="middle"
-  font-family="'Courier New',monospace" font-size="8" fill="#1E3A50">upload_speed = 460800  ·  port = /dev/serial0</text>
+  font-family="'Courier New',monospace" font-size="8" fill="#5898B8">upload_speed = 460800  ·  port = /dev/serial0</text>
 </svg>
