@@ -154,16 +154,21 @@ static void renderTheme6(const struct tm &t) {
 
 // ── 🦀 Crab icon animation (Claude CLI mascot) ────────────────────────────────
 //
-// Drawn with TFT primitives (built-in fonts cannot render emoji).
-// Bounding box: ±14 px wide, ±9 px tall → 29×19 px total
-//   ICON_Y = 215  (gap below weekday label; legs end at y=224 ≤ SAFE_Y2=229)
+// Single-colour silhouette in COL_CLAUDE (warm coral ~RGB 222,121,82).
+// Bounding box: ±22 px wide, ±16 px tall → 45×33 px
+//   ICON_Y = 210  (may overlap weekday label — user confirmed OK)
+//   Legs bottom: y+15 = 225 ≤ SAFE_Y2=229
 //
-// X range: SAFE_X+16 … SAFE_X2-16  (= 21 … 218)
-// Period : 6 s per full round-trip
+// X range: SAFE_X+23 … SAFE_X2-23  (= 28 … 211)
+// Period : 10 s per full round-trip (slower)
 
-#define ICON_Y    215
-#define ICON_HW    14   // half-width  for erase rect
-#define ICON_HH     9   // half-height for erase rect
+#define ICON_Y    210
+#define ICON_HW    22   // half-width  for erase rect
+#define ICON_HH    16   // half-height for erase rect
+
+// Claude coral  tft.color565(222, 121, 82) precomputed
+//   R=222→27, G=121→30, B=82→10  → (27<<11)|(30<<5)|10 = 0xDBCA
+#define COL_CLAUDE  0xDBCA
 
 static void iconErase(int16_t cx) {
     tft.fillRect(cx - ICON_HW - 1, ICON_Y - ICON_HH - 1,
@@ -171,38 +176,36 @@ static void iconErase(int16_t cx) {
 }
 
 static void iconDraw(int16_t cx) {
-    const int16_t y   = ICON_Y;
-    const uint16_t R  = 0xF800;   // red
-    const uint16_t W  = TFT_WHITE;
-    const uint16_t B  = TFT_BLACK;
+    const int16_t  y = ICON_Y;
+    const uint16_t C = COL_CLAUDE;
 
-    // Body
-    tft.fillCircle(cx, y, 5, R);
+    // Body (r=8)
+    tft.fillCircle(cx, y, 8, C);
 
-    // Eyes: white circle + black pupil
-    tft.fillCircle(cx - 3, y - 5, 2, W);
-    tft.fillCircle(cx + 3, y - 5, 2, W);
-    tft.fillCircle(cx - 3, y - 5, 1, B);
-    tft.fillCircle(cx + 3, y - 5, 1, B);
+    // Eye stalks + eye tips
+    tft.drawLine(cx - 5, y - 8,  cx - 5, y - 11, C);
+    tft.drawLine(cx + 5, y - 8,  cx + 5, y - 11, C);
+    tft.fillCircle(cx - 5, y - 13, 2, C);
+    tft.fillCircle(cx + 5, y - 13, 2, C);
 
-    // Left claw: arm + two pincers
-    tft.drawLine(cx - 5,  y - 1, cx - 10, y - 4, R);
-    tft.drawLine(cx - 10, y - 4, cx - 13, y - 7, R);
-    tft.drawLine(cx - 10, y - 4, cx - 13, y - 1, R);
+    // Left claw: arm + upper/lower pincers
+    tft.drawLine(cx - 8,  y - 2,  cx - 15, y - 6,  C);
+    tft.drawLine(cx - 15, y - 6,  cx - 20, y - 11, C);
+    tft.drawLine(cx - 15, y - 6,  cx - 20, y - 1,  C);
 
     // Right claw (mirror)
-    tft.drawLine(cx + 5,  y - 1, cx + 10, y - 4, R);
-    tft.drawLine(cx + 10, y - 4, cx + 13, y - 7, R);
-    tft.drawLine(cx + 10, y - 4, cx + 13, y - 1, R);
+    tft.drawLine(cx + 8,  y - 2,  cx + 15, y - 6,  C);
+    tft.drawLine(cx + 15, y - 6,  cx + 20, y - 11, C);
+    tft.drawLine(cx + 15, y - 6,  cx + 20, y - 1,  C);
 
     // Legs — 3 per side
-    tft.drawLine(cx - 4, y + 3, cx - 8, y + 7, R);
-    tft.drawLine(cx - 3, y + 4, cx - 6, y + 9, R);
-    tft.drawLine(cx - 2, y + 4, cx - 4, y + 9, R);
+    tft.drawLine(cx - 6, y + 5,  cx - 12, y + 10, C);
+    tft.drawLine(cx - 5, y + 6,  cx - 9,  y + 15, C);
+    tft.drawLine(cx - 3, y + 7,  cx - 5,  y + 15, C);
 
-    tft.drawLine(cx + 4, y + 3, cx + 8, y + 7, R);
-    tft.drawLine(cx + 3, y + 4, cx + 6, y + 9, R);
-    tft.drawLine(cx + 2, y + 4, cx + 4, y + 9, R);
+    tft.drawLine(cx + 6, y + 5,  cx + 12, y + 10, C);
+    tft.drawLine(cx + 5, y + 6,  cx + 9,  y + 15, C);
+    tft.drawLine(cx + 3, y + 7,  cx + 5,  y + 15, C);
 }
 
 void clockAnimUpdate() {
@@ -212,14 +215,14 @@ void clockAnimUpdate() {
     _lastMs = now;
 
     // Triangle wave 0.0 → 1.0 → 0.0 over PERIOD ms
-    const uint32_t PERIOD = 6000;
+    const uint32_t PERIOD = 10000;   // 10 s round-trip (slower)
     uint32_t phase = now % PERIOD;
     float frac = phase < PERIOD / 2
                  ? (float)phase / (PERIOD / 2)
                  : 1.0f - (float)(phase - PERIOD / 2) / (PERIOD / 2);
 
-    int16_t minX = SAFE_X  + ICON_HW + 2;
-    int16_t maxX = SAFE_X2 - ICON_HW - 2;
+    int16_t minX = SAFE_X  + ICON_HW + 1;
+    int16_t maxX = SAFE_X2 - ICON_HW - 1;
     int16_t newX = minX + (int16_t)(frac * (maxX - minX));
 
     if (newX == _iconX) return;
