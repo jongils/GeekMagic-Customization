@@ -3,6 +3,10 @@
 #include "config.h"
 #include <Arduino.h>
 #include <time.h>
+#include "Font_NotoSansBold36.h"
+#include "Font_NotoSansBold15.h"
+#include "Font_NotoSansMono20.h"
+#include "Font_Unicode72.h"
 
 static int8_t  _lastHour = -1;
 static int8_t  _lastMin  = -1;
@@ -22,51 +26,80 @@ bool clockTimeValid() {
     return time(nullptr) > 1000000000UL;
 }
 
-// ── Theme 4: 메인 시계 ────────────────────────────────────────────────────────
+// ── Theme 4: 메인 시계 (Smooth Font) ─────────────────────────────────────────
 //
-// 안전 영역 (SAFE_X=5, SAFE_Y=5, SAFE_W=230, SAFE_H=225) 기준 레이아웃
-//   y= 34: date "2026.08.17  MON"  size 2, COL_GREY
-//   y= 56: separator line
-//   y= 70: HH:MM                   size 6, COL_CYAN   [48px → ends y=118]
-//   y=127: :SS                     size 3, COL_GREY   [24px → ends y=151]
-//   y=170: separator line
-//   y=184: weekday full name        size 2, COL_WHITE  [16px → ends y=200]
+// Font_Unicode72   (72px, ascent=52/descent=14) for HH:MM
+// NotoSansMono20   (20px, ascent=16/descent= 5) for date / :SS
+// NotoSansBold15   (15px, ascent=12/descent= 4) for weekday
 //
-// 상하 여백 각 29px → 수직 중앙 정렬
+// 레이아웃 (SAFE_X=5, CX=120):
+//   y= 15: date "2026.08.17  MON"  NotoSansMono20, COL_GREY   [cell 21px → ends ~36]
+//   y= 40: separator line
+//   y= 48: HH:MM                   Font_Unicode72, COL_CYAN   [cell 66px → ends ~114]
+//   y=120: :SS                     NotoSansMono20, COL_GREY   [cell 21px → ends ~141]
+//   y=148: separator line
+//   y=156: weekday full name        NotoSansBold15, COL_WHITE  [cell 16px → ends ~172]
+//   y=202: 🦀 crab animation
+
+#define CX  (SAFE_X + SAFE_W / 2)   // 120
 
 static void renderTheme4(const struct tm &t) {
     // ── Day/date strip — redraws only when day changes ───────────────────────
     if (t.tm_wday != _lastWday) {
-        // Date
-        char dateBuf[20];
+        char dateBuf[24];
         snprintf(dateBuf, sizeof(dateBuf), "%04d.%02d.%02d  %s",
                  1900 + t.tm_year, t.tm_mon + 1, t.tm_mday,
                  WDAY_EN[t.tm_wday]);
-        displayRect(SAFE_X, 34, SAFE_W, 16, TFT_BLACK);
-        displayTextCentre(SAFE_X, 34, SAFE_W, dateBuf, COL_GREY, 2);
 
-        // Separator below date
-        displayHLine(SAFE_X, 56, SAFE_W, COL_GREY);
+        tft.loadFont(Font_NotoSansMono20);
+        tft.setTextDatum(TC_DATUM);
+        tft.setTextColor(COL_GREY, TFT_BLACK);
+        tft.fillRect(SAFE_X, 15, SAFE_W, 23, TFT_BLACK);
+        tft.drawString(dateBuf, CX, 15);
+        tft.unloadFont();
+
+        displayHLine(SAFE_X, 40, SAFE_W, COL_GREY);
+
+        // Weekday full name
+        tft.loadFont(Font_NotoSansBold15);
+        tft.setTextDatum(TC_DATUM);
+        tft.fillRect(SAFE_X, 156, SAFE_W, 18, TFT_BLACK);
+        tft.setTextColor(COL_WHITE, TFT_BLACK);
+        tft.drawString(WDAY_FULL[t.tm_wday], CX, 156);
+        tft.unloadFont();
+        displayHLine(SAFE_X, 148, SAFE_W, COL_GREY);
 
         _lastWday = t.tm_wday;
     }
 
-    // ── HH:MM — size 6 (48px) ────────────────────────────────────────────────
+    // ── HH:MM — Font_Unicode72 (72px, cell 66px) ─────────────────────────────
     if (t.tm_hour != _lastHour || t.tm_min != _lastMin) {
         char buf[6];
         snprintf(buf, sizeof(buf), "%02d:%02d", t.tm_hour, t.tm_min);
-        displayRect(SAFE_X, 70, SAFE_W, 48, TFT_BLACK);
-        displayTextCentre(SAFE_X, 70, SAFE_W, buf, COL_CYAN, 6);
+
+        tft.loadFont(Font_Unicode72);
+        tft.setTextDatum(TC_DATUM);
+        tft.setTextColor(COL_CYAN, TFT_BLACK);
+        tft.fillRect(SAFE_X, 48, SAFE_W, 68, TFT_BLACK);
+        tft.drawString(buf, CX, 48);
+        tft.unloadFont();
+
         _lastHour = t.tm_hour;
         _lastMin  = t.tm_min;
     }
 
-    // ── :SS — size 3 (24px) ──────────────────────────────────────────────────
+    // ── :SS — NotoSansMono20 (20px) ──────────────────────────────────────────
     if (t.tm_sec != _lastSec) {
         char buf[4];
         snprintf(buf, sizeof(buf), ":%02d", t.tm_sec);
-        displayRect(SAFE_X, 127, SAFE_W, 24, TFT_BLACK);
-        displayTextCentre(SAFE_X, 127, SAFE_W, buf, COL_GREY, 3);
+
+        tft.loadFont(Font_NotoSansMono20);
+        tft.setTextDatum(TC_DATUM);
+        tft.setTextColor(COL_GREY, TFT_BLACK);
+        tft.fillRect(SAFE_X, 120, SAFE_W, 23, TFT_BLACK);
+        tft.drawString(buf, CX, 120);
+        tft.unloadFont();
+
         _lastSec = t.tm_sec;
     }
 }

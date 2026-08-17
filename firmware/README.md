@@ -195,21 +195,31 @@ y=239  └────────────────┘
 
 | 항목 | 사용 | 한도 |
 |------|------|------|
-| Flash | ~48% (502KB) | 1,044KB |
+| Flash | ~54.5% (570KB) | 1,044KB |
 | RAM (정적) | ~72% (59KB) | 81KB |
 | 런타임 힙 | ~17KB | — |
 
 ---
 
-## 시계 화면 구성 (Theme 4 기본)
+## 시계 화면 구성 (Theme 4 기본 — Smooth Font)
 
 ```
-y= 34: 날짜  "2026.08.17  MON"   size 2, 회색, 중앙
-y= 56: ─────── 구분선 ───────
-y= 70: HH:MM                    size 6 (48px), CYAN, 중앙
-y=127: :SS                      size 3 (24px), 회색, 중앙
-y=210: 🦀 게 아이콘 좌우 애니메이션
+y= 15: 날짜  "2026.08.17  MON"   NotoSansMono20 (20px), 회색, 중앙
+y= 40: ─────── 구분선 ───────
+y= 48: HH:MM                    Unicode72 (72px), CYAN, 중앙
+y=120: :SS                      NotoSansMono20 (20px), 회색, 중앙
+y=148: ─────── 구분선 ───────
+y=156: 요일  "MONDAY"           NotoSansBold15 (15px), 흰색, 중앙
+y=202: 🦀 게 아이콘 좌우 애니메이션
 ```
+
+**Smooth Font 구성** — TFT_eSPI `.vlw` 폰트를 PROGMEM C 배열로 변환, LittleFS 없이 직접 임베딩
+
+| 폰트 헤더 | 크기 | 용도 |
+|-----------|------|------|
+| `Font_Unicode72.h` | 72px (ascent 52) | HH:MM 시·분 |
+| `Font_NotoSansMono20.h` | 20px (ascent 16) | 날짜 / :SS |
+| `Font_NotoSansBold15.h` | 15px (ascent 12) | 요일 전체 이름 |
 
 - 게 아이콘: `clock_theme.cpp`의 `iconDraw()` — `tft.fillRect()` 프리미티브로 직접 그림
 - 색상: `COL_CLAUDE = 0xA800` (진한 빨강 · RGB 168,0,0 · #A80000)
@@ -246,7 +256,11 @@ firmware/
 │   ├── http_server.cpp/.h   ← HTTP API 서버 (포트 80)
 │   ├── filesystem.cpp/.h    ← LittleFS
 │   ├── jpeg_display.cpp/.h  ← JPEG → TFT 스트리밍
-│   └── clock_theme.cpp/.h   ← 시계 렌더링 + 🦀 애니메이션
+│   ├── clock_theme.cpp/.h   ← 시계 렌더링 + 🦀 애니메이션
+│   ├── Font_Unicode72.h     ← 72px smooth font PROGMEM 배열 (HH:MM)
+│   ├── Font_NotoSansMono20.h← 20px smooth font PROGMEM 배열 (날짜/:SS)
+│   ├── Font_NotoSansBold36.h← 36px smooth font PROGMEM 배열 (예비)
+│   └── Font_NotoSansBold15.h← 15px smooth font PROGMEM 배열 (요일)
 ├── diag/
 │   └── main.cpp             ← 핀 탐색 진단 유틸리티
 ├── diag_bezel/
