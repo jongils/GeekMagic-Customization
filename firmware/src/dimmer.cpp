@@ -7,9 +7,9 @@
 
 #define DIM_EEPROM_SIZE  16
 #define DIM_EEPROM_ADDR   0
-#define DIM_MAGIC        0xD7
+#define DIM_MAGIC        0xD8   // bumped: invalidates pre-inversion saved config
 
-static DimmerConfig _cfg    = { false, 22, 7, 20, DEFAULT_BRIGHTNESS };
+static DimmerConfig _cfg    = { false, 22, 7, 10, DEFAULT_BRIGHTNESS };
 static bool         _active = false;
 
 static bool inDimPeriod(int h) {

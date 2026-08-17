@@ -74,7 +74,8 @@ void displayCircleFill(int16_t x, int16_t y, int16_t r, uint16_t colour) {
 
 void displaySetBrightness(uint8_t level) {
 #if TFT_BL != -1
-    analogWrite(TFT_BL, level);
+    // GPIO5 backlight is active-low: PWM 0 = full bright, 255 = off
+    analogWrite(TFT_BL, 255 - level);
 #endif
 }
 
