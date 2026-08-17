@@ -147,23 +147,24 @@ static void renderTheme6(const struct tm &t) {
     if (t.tm_sec  != _lastSec)  { drawVal(175, t.tm_sec,  COL_WHITE);  _lastSec  = t.tm_sec;  }
 }
 
-// ── 🦀 Crab icon animation (Claude CLI mascot) ────────────────────────────────
+// ── 🦀 Crab icon animation (Claude CLI mascot — pixel-art style) ──────────────
 //
-// Single-colour silhouette in COL_CLAUDE (warm coral ~RGB 222,121,82).
-// Bounding box: ±22 px wide, ±16 px tall → 45×33 px
-//   ICON_Y = 210  (may overlap weekday label — user confirmed OK)
-//   Legs bottom: y+15 = 225 ≤ SAFE_Y2=229
+//   Body  : cx-24, y-16, 48×32 px
+//   Claws : cx-32/cx+24, y+0, 8×8 px
+//   Eyes  : cx-16/cx+12, y-8,  4×8 px (TFT_BLACK)
+//   Legs  : cx-20/cx-12/cx+8/cx+16, y+16, 4×8 px
 //
-// X range: SAFE_X+23 … SAFE_X2-23  (= 28 … 211)
-// Period : 10 s per full round-trip (slower)
+// ICON_Y = body vertical centre
+//   ICON_Y=202 → body top y=186, leg bottom y=225 ≤ SAFE_Y2=229
+// ICON_HW=32 (left claw: cx-32), ICON_HH=23 (leg bottom: y+23)
+// X range: SAFE_X+33 … SAFE_X2-33  (= 38 … 201)
 
-#define ICON_Y    210
-#define ICON_HW    22   // half-width  for erase rect
-#define ICON_HH    16   // half-height for erase rect
+#define ICON_Y    202
+#define ICON_HW    32
+#define ICON_HH    23
 
-// Claude coral  tft.color565(222, 121, 82) precomputed
-//   R=222→27, G=121→30, B=82→10  → (27<<11)|(30<<5)|10 = 0xDBCA
-#define COL_CLAUDE  0xDBCA
+// Dark red RGB(168,0,0) = #A80000 → tft.color565 = 0xA800
+#define COL_CLAUDE  0xA800
 
 static void iconErase(int16_t cx) {
     tft.fillRect(cx - ICON_HW - 1, ICON_Y - ICON_HH - 1,
@@ -174,33 +175,22 @@ static void iconDraw(int16_t cx) {
     const int16_t  y = ICON_Y;
     const uint16_t C = COL_CLAUDE;
 
-    // Body (r=8)
-    tft.fillCircle(cx, y, 8, C);
+    // Body (48×32 px)
+    tft.fillRect(cx - 24, y - 16, 48, 32, C);
 
-    // Eye stalks + eye tips
-    tft.drawLine(cx - 5, y - 8,  cx - 5, y - 11, C);
-    tft.drawLine(cx + 5, y - 8,  cx + 5, y - 11, C);
-    tft.fillCircle(cx - 5, y - 13, 2, C);
-    tft.fillCircle(cx + 5, y - 13, 2, C);
+    // Claws (8×8 px)
+    tft.fillRect(cx - 32, y,       8,  8, C);   // left
+    tft.fillRect(cx + 24, y,       8,  8, C);   // right
 
-    // Left claw: arm + upper/lower pincers
-    tft.drawLine(cx - 8,  y - 2,  cx - 15, y - 6,  C);
-    tft.drawLine(cx - 15, y - 6,  cx - 20, y - 11, C);
-    tft.drawLine(cx - 15, y - 6,  cx - 20, y - 1,  C);
+    // Eyes (4×8 px, black)
+    tft.fillRect(cx - 16, y -  8,  4,  8, TFT_BLACK);   // left
+    tft.fillRect(cx + 12, y -  8,  4,  8, TFT_BLACK);   // right
 
-    // Right claw (mirror)
-    tft.drawLine(cx + 8,  y - 2,  cx + 15, y - 6,  C);
-    tft.drawLine(cx + 15, y - 6,  cx + 20, y - 11, C);
-    tft.drawLine(cx + 15, y - 6,  cx + 20, y - 1,  C);
-
-    // Legs — 3 per side
-    tft.drawLine(cx - 6, y + 5,  cx - 12, y + 10, C);
-    tft.drawLine(cx - 5, y + 6,  cx - 9,  y + 15, C);
-    tft.drawLine(cx - 3, y + 7,  cx - 5,  y + 15, C);
-
-    tft.drawLine(cx + 6, y + 5,  cx + 12, y + 10, C);
-    tft.drawLine(cx + 5, y + 6,  cx + 9,  y + 15, C);
-    tft.drawLine(cx + 3, y + 7,  cx + 5,  y + 15, C);
+    // Legs (4×8 px)
+    tft.fillRect(cx - 20, y + 16,  4,  8, C);   // leg 1
+    tft.fillRect(cx - 12, y + 16,  4,  8, C);   // leg 2
+    tft.fillRect(cx +  8, y + 16,  4,  8, C);   // leg 3
+    tft.fillRect(cx + 16, y + 16,  4,  8, C);   // leg 4
 }
 
 void clockAnimUpdate() {

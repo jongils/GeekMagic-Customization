@@ -211,9 +211,24 @@ y=127: :SS                      size 3 (24px), 회색, 중앙
 y=210: 🦀 게 아이콘 좌우 애니메이션
 ```
 
-- 게 아이콘: `clock_theme.cpp`의 `iconDraw()` — TFT 프리미티브로 직접 그림
-- 색상: `COL_CLAUDE = 0xDBCA` (Claude 코랄 ~RGB 222,121,82)
-- 이동 범위: x 28 ~ 211, 왕복 10초 주기
+- 게 아이콘: `clock_theme.cpp`의 `iconDraw()` — `tft.fillRect()` 프리미티브로 직접 그림
+- 색상: `COL_CLAUDE = 0xA800` (진한 빨강 · RGB 168,0,0 · #A80000)
+- 구조 (Excel 그리드 기반, N=1px/cell):
+
+| 파트 | fillRect 오프셋 | 크기 |
+|------|----------------|------|
+| 몸통 | cx-24, y-16 | 48×32 px |
+| 좌측 집게발 | cx-32, y+0 | 8×8 px |
+| 우측 집게발 | cx+24, y+0 | 8×8 px |
+| 좌측 눈 | cx-16, y-8 | 4×8 px (TFT_BLACK) |
+| 우측 눈 | cx+12, y-8 | 4×8 px (TFT_BLACK) |
+| 다리 1 | cx-20, y+16 | 4×8 px |
+| 다리 2 | cx-12, y+16 | 4×8 px |
+| 다리 3 | cx+8,  y+16 | 4×8 px |
+| 다리 4 | cx+16, y+16 | 4×8 px |
+
+- `ICON_Y=202`, `ICON_HW=32`, `ICON_HH=23`
+- 이동 범위: x 38 ~ 201, 왕복 10초 주기
 - `clockAnimUpdate()` → `main.cpp`의 `loop()`에서 매 프레임 호출 (~60 fps)
 
 ---
@@ -234,8 +249,10 @@ firmware/
 │   └── clock_theme.cpp/.h   ← 시계 렌더링 + 🦀 애니메이션
 ├── diag/
 │   └── main.cpp             ← 핀 탐색 진단 유틸리티
-└── diag_bezel/
-    └── main.cpp             ← 베젤 경계 테스트 (확정 경계선 시각화)
+├── diag_bezel/
+│   └── main.cpp             ← 베젤 경계 테스트 (확정 경계선 시각화)
+└── diag_color/
+    └── main.cpp             ← TFT 색상 평가 앱 (웹 UI + OTA)
 
 pi/
 └── draw_client.py           ← Pi용 드로잉 커맨드 클라이언트
@@ -250,6 +267,33 @@ pi/
 | `esp8266_diag` | 핀 진단 펌웨어 (`diag/`) |
 | `esp8266_bezel` | 베젤 경계 테스트 펌웨어 (`diag_bezel/`) |
 | `esp8266_bezel_ota` | 베젤 펌웨어 OTA 빌드 |
+| `esp8266_color_diag` | TFT 색상 평가 앱 (`diag_color/`) |
+| `esp8266_color_diag_ota` | 색상 평가 앱 OTA 빌드 |
+
+### 색상 평가 앱 (`diag_color/`)
+
+TFT 실물에서 색상 차이를 직접 비교하기 위한 진단 앱.
+
+| 기능 | 설명 |
+|------|------|
+| HTML5 컬러 피커 | 임의 색상 선택 → TFT 즉시 표시 + RGB565 코드 확인 |
+| 게 후보 스와치 | 0xC348 / 0xBB00 / 0xFC00 / 0x7A00 원터치 전환 |
+| 기본 12색 프리셋 | Red · Green · Blue · Cyan · Magenta · Yellow 등 |
+| Compare All | 모든 프리셋을 TFT 수평 스트립으로 한눈에 비교 |
+| 테스트 페이지 | 그레이스케일 / RGB 램프 / TFT 팔레트 / 온도 스펙트럼 |
+
+```bash
+# 빌드 및 업로드
+pio run -e esp8266_color_diag
+curl -F "image=@.pio/build/esp8266_color_diag/firmware.bin" http://<IP>/update
+
+# 웹 UI
+http://<IP>/           # 컨트롤 패널
+http://<IP>/compare    # 전체 비교 스트립
+
+# 메인 펌웨어로 복귀
+curl -F "image=@.pio/build/esp8266/firmware.bin" http://<IP>/update
+```
 
 ---
 
