@@ -10,6 +10,8 @@
 #include "filesystem.h"
 #include "jpeg_display.h"
 #include "clock_theme.h"
+#include "dimmer.h"
+#include "dimmer_page.h"
 
 static ESP8266WebServer      server(80);
 static ESP8266HTTPUpdateServer updater;
@@ -169,6 +171,56 @@ static void handleSet() {
     sendJSON(200, "{\"ok\":true}");
 }
 
+// ── GET /dimmer — web settings page ──────────────────────────────────────────
+
+static void handleDimmerPage() {
+    server.send_P(200, "text/html", DIMMER_PAGE);
+}
+
+// ── GET /dimmer/status — JSON ─────────────────────────────────────────────────
+
+static void handleDimmerStatus() {
+    DimmerConfig c = dimmerGetConfig();
+    time_t now = time(nullptr);
+    int hour = 0;
+    if (now > 1000000000UL) {
+        struct tm t; localtime_r(&now, &t); hour = t.tm_hour;
+    }
+    char buf[128];
+    snprintf(buf, sizeof(buf),
+        "{\"enabled\":%s,\"startHour\":%d,\"endHour\":%d,"
+        "\"dimBrt\":%d,\"normalBrt\":%d,\"active\":%s,\"hour\":%d}",
+        c.enabled ? "true" : "false",
+        c.startHour, c.endHour,
+        c.dimBrt, c.normalBrt,
+        dimmerIsActive() ? "true" : "false",
+        hour);
+    sendJSON(200, buf);
+}
+
+// ── POST /dimmer/save — save settings ─────────────────────────────────────────
+
+static void handleDimmerSave() {
+    if (server.method() != HTTP_POST) {
+        server.send(405, "text/plain", "POST only");
+        return;
+    }
+    String body = server.arg("plain");
+    JsonDocument doc;
+    if (deserializeJson(doc, body)) {
+        sendJSON(400, "{\"ok\":false,\"error\":\"JSON parse error\"}");
+        return;
+    }
+    DimmerConfig cfg;
+    cfg.enabled   = doc["enabled"]    | false;
+    cfg.startHour = doc["startHour"]  | 22;
+    cfg.endHour   = doc["endHour"]    | 7;
+    cfg.dimBrt    = doc["dimBrt"]     | 20;
+    cfg.normalBrt = doc["normalBrt"]  | DEFAULT_BRIGHTNESS;
+    dimmerSetConfig(cfg);
+    sendJSON(200, "{\"ok\":true}");
+}
+
 // ── public init ───────────────────────────────────────────────────────────────
 
 void httpServerInit() {
@@ -180,6 +232,10 @@ void httpServerInit() {
     // JPEG push: /display (new) and /doUpload (legacy compat)
     server.on("/display",  HTTP_POST, handleDisplay,  handleDisplayData);
     server.on("/doUpload", HTTP_POST, handleDisplay,  handleDisplayData);
+
+    server.on("/dimmer",        HTTP_GET,  handleDimmerPage);
+    server.on("/dimmer/status", HTTP_GET,  handleDimmerStatus);
+    server.on("/dimmer/save",   HTTP_POST, handleDimmerSave);
 
     updater.setup(&server, "/update");
     server.begin();

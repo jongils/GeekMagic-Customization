@@ -3,6 +3,7 @@
 #include "config.h"
 #include <Arduino.h>
 #include <time.h>
+#include <ESP8266WiFi.h>
 #include "Font_NotoSansBold36.h"
 #include "Font_NotoSansBold15.h"
 #include "Font_NotoSansMono20.h"
@@ -13,12 +14,13 @@ static int8_t  _lastMin  = -1;
 static int8_t  _lastSec  = -1;
 static int8_t  _lastWday = -1;
 static int16_t _iconX    = -1;   // current icon x centre (-1 = not drawn yet)
+static uint32_t _lastIP  = 0;    // cached IP as 32-bit int for change detection
 
-static const char *WDAY_EN[]   = { "SUN","MON","TUE","WED","THU","FRI","SAT" };
-static const char *WDAY_FULL[] = { "SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY" };
+static const char *WDAY_EN[] = { "SUN","MON","TUE","WED","THU","FRI","SAT" };
 
 void clockThemeInit() {
     _lastHour = _lastMin = _lastSec = _lastWday = -1;
+    _lastIP = 0;
     _iconX = -1;   // force full redraw; screen is cleared by caller
 }
 
@@ -29,8 +31,7 @@ bool clockTimeValid() {
 // ── Theme 4: 메인 시계 (Smooth Font) ─────────────────────────────────────────
 //
 // Font_Unicode72   (72px, ascent=52/descent=14) for HH:MM
-// NotoSansMono20   (20px, ascent=16/descent= 5) for date / :SS
-// NotoSansBold15   (15px, ascent=12/descent= 4) for weekday
+// NotoSansMono20   (20px, ascent=16/descent= 5) for date / :SS / IP
 //
 // 레이아웃 (SAFE_X=5, CX=120):
 //   y= 15: date "2026.08.17  MON"  NotoSansMono20, COL_GREY   [cell 21px → ends ~36]
@@ -38,13 +39,13 @@ bool clockTimeValid() {
 //   y= 48: HH:MM                   Font_Unicode72, COL_CYAN   [cell 66px → ends ~114]
 //   y=120: :SS                     NotoSansMono20, COL_GREY   [cell 21px → ends ~141]
 //   y=148: separator line
-//   y=156: weekday full name        NotoSansBold15, COL_WHITE  [cell 16px → ends ~172]
+//   y=156: IP address               NotoSansMono20, COL_WHITE  [cell 21px → ends ~177]
 //   y=202: 🦀 crab animation
 
 #define CX  (SAFE_X + SAFE_W / 2)   // 120
 
 static void renderTheme4(const struct tm &t) {
-    // ── Day/date strip — redraws only when day changes ───────────────────────
+    // ── Day/date strip — redraws when day changes ────────────────────────────
     if (t.tm_wday != _lastWday) {
         char dateBuf[24];
         snprintf(dateBuf, sizeof(dateBuf), "%04d.%02d.%02d  %s",
@@ -59,17 +60,24 @@ static void renderTheme4(const struct tm &t) {
         tft.unloadFont();
 
         displayHLine(SAFE_X, 40, SAFE_W, COL_GREY);
-
-        // Weekday full name
-        tft.loadFont(Font_NotoSansBold15);
-        tft.setTextDatum(TC_DATUM);
-        tft.fillRect(SAFE_X, 156, SAFE_W, 18, TFT_BLACK);
-        tft.setTextColor(COL_WHITE, TFT_BLACK);
-        tft.drawString(WDAY_FULL[t.tm_wday], CX, 156);
-        tft.unloadFont();
         displayHLine(SAFE_X, 148, SAFE_W, COL_GREY);
 
         _lastWday = t.tm_wday;
+    }
+
+    // ── IP address — redraws when IP changes (or on first render) ────────────
+    {
+        uint32_t curIP = (uint32_t)WiFi.localIP();
+        if (curIP != _lastIP) {
+            String ipStr = WiFi.localIP().toString();
+            tft.loadFont(Font_NotoSansMono20);
+            tft.setTextDatum(TC_DATUM);
+            tft.setTextColor(COL_WHITE, TFT_BLACK);
+            tft.fillRect(SAFE_X, 156, SAFE_W, 23, TFT_BLACK);
+            tft.drawString(ipStr.c_str(), CX, 156);
+            tft.unloadFont();
+            _lastIP = curIP;
+        }
     }
 
     // ── HH:MM — Font_Unicode72 (72px, cell 66px) ─────────────────────────────

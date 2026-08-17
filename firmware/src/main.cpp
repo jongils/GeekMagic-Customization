@@ -11,6 +11,7 @@
 #include "http_server.h"
 #include "jpeg_display.h"
 #include "clock_theme.h"
+#include "dimmer.h"
 
 // ── NTP ───────────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ void setup() {
     syncPosixTime();
 
     httpServerInit();
+    dimmerInit();
     _clockTicker.attach(1.0f, onClockTick);
     clockThemeInit();
     displayFill(TFT_BLACK);
@@ -118,6 +120,18 @@ void loop() {
 
     if (_clockTick) {
         _clockTick = false;
+
+        // Check dimmer every hour
+        static int8_t _lastDimHour = -1;
+        if (clockTimeValid()) {
+            time_t now = time(nullptr);
+            struct tm t; localtime_r(&now, &t);
+            if (t.tm_hour != _lastDimHour) {
+                dimmerApply(t.tm_hour);
+                _lastDimHour = t.tm_hour;
+            }
+        }
+
         if (mode == MODE_CLOCK) {
             clockThemeRender(THEME_CLOCK_1);
         }
