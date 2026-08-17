@@ -197,24 +197,33 @@ LittleFS → malloc(파일크기) → JPEGDEC.openRAM()
 `MODE_CLOCK` 상태에서 1초마다 렌더링됩니다.  
 변경된 숫자 자리만 덮어써서 깜빡임을 최소화합니다.
 
-#### Theme 4 레이아웃 (현재 활성)
+#### Theme 4 레이아웃 (현재 활성 — Smooth Font)
+
+Smooth Font(.vlw)를 PROGMEM C 배열로 변환해 LittleFS 없이 직접 임베딩.  
+`tft.loadFont(array)` → `tft.drawString()` → `tft.unloadFont()` 패턴 사용.
 
 ```
-y=0   ────── (베젤에 가려짐)
-y=76  ──────  HH:MM   (size=4, CYAN)
-y=152 ──────  :SS     (size=2, GREY)
-y=183 ──────  구분선  (GREY)
-y=190 ──────  2025.08.15 FRI  (size=2, WHITE)
-y=240 ──────
+y= 15: "2026.08.17  MON"   NotoSansMono20 (20px, ascent=16)  GREY
+y= 40: ── 구분선 ──
+y= 48: HH:MM               Font_Unicode72 (72px, ascent=52)  CYAN   [ends ~114]
+y=120: :SS                  NotoSansMono20 (20px, ascent=16)  GREY
+y=148: ── 구분선 ──
+y=156: "MONDAY"             NotoSansBold15 (15px, ascent=12)  WHITE
+y=202: 🦀 crab 애니메이션 (ICON_Y=202)
 ```
+
+| 폰트 헤더 | 크기 | 용도 |
+|-----------|------|------|
+| `Font_Unicode72.h` | 72px | HH:MM — digits 0-9, colon 포함 |
+| `Font_NotoSansMono20.h` | 20px | 날짜, :SS |
+| `Font_NotoSansBold15.h` | 15px | 요일 전체 이름 |
+| `Font_NotoSansBold36.h` | 36px | 예비 (미사용) |
 
 | 함수 | 역할 |
 |------|------|
 | `clockThemeInit()` | 캐시 초기화 → 다음 틱에 전체 재렌더링 |
 | `clockTimeValid()` | NTP 동기화 완료 여부 |
 | `clockThemeRender(theme)` | 1초 틱마다 호출되는 렌더러 |
-
-> TFT_eSPI 내장 폰트는 ASCII 전용. 한글은 깨지므로 요일은 영문(SUN–SAT) 사용.
 
 **구현 상태: 완료**
 
@@ -255,7 +264,7 @@ y=240 ──────
 
 | 항목 | 사용 | 한도 |
 |------|------|------|
-| Flash | **~48%** (503KB) | 1,044KB |
+| Flash | **~54.5%** (570KB) | 1,044KB |
 | RAM (정적) | ~72% (59KB) | 81KB |
 | 런타임 힙 | ~17KB | — |
 
