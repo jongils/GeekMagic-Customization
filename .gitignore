@@ -11,3 +11,9 @@ venv/
 *.log
 cache/
 logs/
+
+# Secrets / local config (contains API keys and password hashes)
+config.json
+
+# Claude internal files
+.claude/
