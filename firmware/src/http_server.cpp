@@ -51,9 +51,9 @@ static void sendJSON(int code, const char *body) {
     server.send(code, "application/json", body);
 }
 
-// ── GET / — status ────────────────────────────────────────────────────────────
+// ── GET /status — JSON device status (API) ───────────────────────────────────
 
-static void handleRoot() {
+static void handleStatus() {
     const char *modeStr = (_mode == MODE_DRAW) ? "draw"
                         : (_mode == MODE_JPEG) ? "jpeg"
                         : "clock";
@@ -62,6 +62,76 @@ static void handleRoot() {
         "{\"fw\":\"%s\",\"mode\":\"%s\",\"brt\":%d,\"heap\":%u}",
         FW_VERSION, modeStr, _brightness, ESP.getFreeHeap());
     sendJSON(200, buf);
+}
+
+// ── GET / — navigation page ───────────────────────────────────────────────────
+
+static const char HOME_PAGE[] PROGMEM = R"RAW(<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GeekMagic SmallTV</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:24px;font-family:sans-serif;background:#0d0d0d;color:#ddd;max-width:400px}
+h1{font-size:1.25em;margin:0 0 4px;color:#fff}
+.sub{font-size:.8em;color:#555;margin-bottom:24px}
+.cards{display:flex;flex-direction:column;gap:12px}
+a.card{display:flex;align-items:center;gap:16px;background:#1c1c1e;border-radius:14px;padding:16px 18px;text-decoration:none;color:#ddd;transition:background .15s}
+a.card:hover{background:#2a2a2c}
+.icon{font-size:2em;line-height:1;flex-shrink:0}
+.info{flex:1}
+.info b{display:block;font-size:1em;color:#fff;margin-bottom:3px}
+.info span{font-size:.82em;color:#777}
+.arrow{color:#444;font-size:1.2em}
+.divider{height:1px;background:#222;margin:4px 0}
+.status{background:#1c1c1e;border-radius:14px;padding:14px 18px;margin-bottom:20px;font-size:.82em;color:#777}
+.status b{color:#aaa}
+#fw,#heap,#mode,#brt{color:#0af;font-weight:bold}
+</style>
+</head>
+<body>
+<h1>&#128249; GeekMagic SmallTV</h1>
+<div class="sub" id="ip">192.168.x.x</div>
+<div class="status">
+펌웨어: <b id="fw">–</b> &nbsp;|&nbsp;
+모드: <b id="mode">–</b> &nbsp;|&nbsp;
+밝기: <b id="brt">–</b> &nbsp;|&nbsp;
+힙: <b id="heap">–</b>
+</div>
+<div class="cards">
+<a class="card" href="/dimmer">
+<div class="icon">&#128161;</div>
+<div class="info"><b>절전 모드</b><span>시간대별 화면 밝기 자동 조절</span></div>
+<div class="arrow">&#8250;</div>
+</a>
+<a class="card" href="/crab">
+<div class="icon">&#127998;</div>
+<div class="info"><b>게 아이콘 색상</b><span>CPU 온도에 따라 색상 자동 변환</span></div>
+<div class="arrow">&#8250;</div>
+</a>
+<div class="divider"></div>
+<a class="card" href="/update">
+<div class="icon">&#128228;</div>
+<div class="info"><b>OTA 펌웨어 업데이트</b><span>.bin 파일 업로드</span></div>
+<div class="arrow">&#8250;</div>
+</a>
+</div>
+<script>
+document.getElementById('ip').textContent=location.hostname;
+fetch('/status').then(r=>r.json()).then(d=>{
+  document.getElementById('fw').textContent=d.fw;
+  document.getElementById('mode').textContent=d.mode;
+  document.getElementById('brt').textContent=d.brt;
+  document.getElementById('heap').textContent=(d.heap/1024).toFixed(1)+'KB';
+});
+</script>
+</body>
+</html>)RAW";
+
+static void handleRoot() {
+    server.send_P(200, "text/html", HOME_PAGE);
 }
 
 // ── GET /mode[?set=clock|draw] ────────────────────────────────────────────────
@@ -313,6 +383,7 @@ static void handleDimmerSave() {
 
 void httpServerInit() {
     server.on("/",        HTTP_GET,  handleRoot);
+    server.on("/status",  HTTP_GET,  handleStatus);
     server.on("/mode",    HTTP_GET,  handleMode);
     server.on("/draw",    HTTP_POST, handleDraw);
     server.on("/set",     HTTP_GET,  handleSet);
