@@ -62,10 +62,28 @@ ESP8266은 세 가지 디스플레이 모드를 가집니다.
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| GET | `/` | 장치 상태 JSON `{"fw":…,"mode":…,"brt":…,"heap":…}` |
+| GET | `/` | 홈 네비게이션 페이지 (HTML) |
+| GET | `/status` | 장치 상태 JSON `{"fw":…,"mode":…,"brt":…,"heap":…}` |
 | GET | `/mode?set=clock` | 시계 모드로 복귀 |
 | GET | `/set?brt=N` | 백라이트 밝기 (0–255) |
 | GET/POST | `/update` | OTA 펌웨어 업데이트 |
+
+### 절전 모드 (Dimmer)
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/dimmer` | 절전 설정 웹 UI (HTML) |
+| GET | `/dimmer/status` | 현재 설정 + 활성 여부 JSON |
+| POST | `/dimmer/save` | 설정 저장 (JSON body) |
+
+### 게 아이콘 색상 (Crab Color)
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/crab` | 색상 설정 웹 UI (HTML) |
+| GET | `/crab/status` | 현재 설정 + 온도 JSON |
+| POST | `/crab/save` | 설정 저장 (JSON body) |
+| GET\|POST | `/temp` | 외부 온도 수신 (`?c=50.3` 또는 JSON `{"c":50.3}`) |
 
 ### 드로잉 커맨드 (Phase 1 ✅)
 
@@ -195,8 +213,8 @@ y=239  └────────────────┘
 
 | 항목 | 사용 | 한도 |
 |------|------|------|
-| Flash | ~54.5% (570KB) | 1,044KB |
-| RAM (정적) | ~72% (59KB) | 81KB |
+| Flash | ~55.5% (579KB) | 1,044KB |
+| RAM (정적) | ~73.7% (60KB) | 81KB |
 | 런타임 힙 | ~17KB | — |
 
 ---
@@ -209,8 +227,8 @@ y= 40: ─────── 구분선 ───────
 y= 48: HH:MM                    Unicode72 (72px), CYAN, 중앙
 y=120: :SS                      NotoSansMono20 (20px), 회색, 중앙
 y=148: ─────── 구분선 ───────
-y=156: 요일  "MONDAY"           NotoSansBold15 (15px), 흰색, 중앙
-y=202: 🦀 게 아이콘 좌우 애니메이션
+y=156: WiFi IP 주소             NotoSansMono20 (20px), 흰색, 중앙
+y=202: 🦀 게 아이콘 좌우 애니메이션 (CPU 온도 연동 색상)
 ```
 
 **Smooth Font 구성** — TFT_eSPI `.vlw` 폰트를 PROGMEM C 배열로 변환, LittleFS 없이 직접 임베딩
@@ -218,11 +236,11 @@ y=202: 🦀 게 아이콘 좌우 애니메이션
 | 폰트 헤더 | 크기 | 용도 |
 |-----------|------|------|
 | `Font_Unicode72.h` | 72px (ascent 52) | HH:MM 시·분 |
-| `Font_NotoSansMono20.h` | 20px (ascent 16) | 날짜 / :SS |
-| `Font_NotoSansBold15.h` | 15px (ascent 12) | 요일 전체 이름 |
+| `Font_NotoSansMono20.h` | 20px (ascent 16) | 날짜 / :SS / IP 주소 |
+| `Font_NotoSansBold15.h` | 15px (ascent 12) | 예비 |
 
 - 게 아이콘: `clock_theme.cpp`의 `iconDraw()` — `tft.fillRect()` 프리미티브로 직접 그림
-- 색상: `COL_CLAUDE = 0xA800` (진한 빨강 · RGB 168,0,0 · #A80000)
+- 색상: `crabColorGet()` 반환값 (CPU 온도 기반 동적 색상, 기본 0xA800 진한 빨강)
 - 구조 (Excel 그리드 기반, N=1px/cell):
 
 | 파트 | fillRect 오프셋 | 크기 |
@@ -249,27 +267,32 @@ y=202: 🦀 게 아이콘 좌우 애니메이션
 firmware/
 ├── platformio.ini
 ├── src/
-│   ├── main.cpp             ← 진입점 (setup/loop, 모드 기반 렌더링)
-│   ├── config.h             ← 전역 상수 + BEZEL_* / SAFE_* 상수
-│   ├── display.cpp/.h       ← TFT_eSPI 래퍼
-│   ├── draw_cmd.cpp/.h      ← JSON 드로잉 커맨드 파서·렌더러
-│   ├── http_server.cpp/.h   ← HTTP API 서버 (포트 80)
-│   ├── filesystem.cpp/.h    ← LittleFS
-│   ├── jpeg_display.cpp/.h  ← JPEG → TFT 스트리밍
-│   ├── clock_theme.cpp/.h   ← 시계 렌더링 + 🦀 애니메이션
-│   ├── Font_Unicode72.h     ← 72px smooth font PROGMEM 배열 (HH:MM)
-│   ├── Font_NotoSansMono20.h← 20px smooth font PROGMEM 배열 (날짜/:SS)
-│   ├── Font_NotoSansBold36.h← 36px smooth font PROGMEM 배열 (예비)
-│   └── Font_NotoSansBold15.h← 15px smooth font PROGMEM 배열 (요일)
+│   ├── main.cpp              ← 진입점 (setup/loop, 모드 기반 렌더링)
+│   ├── config.h              ← 전역 상수 + BEZEL_* / SAFE_* 상수
+│   ├── display.cpp/.h        ← TFT_eSPI 래퍼 (백라이트 PWM 포함)
+│   ├── draw_cmd.cpp/.h       ← JSON 드로잉 커맨드 파서·렌더러
+│   ├── http_server.cpp/.h    ← HTTP API 서버 (포트 80)
+│   ├── filesystem.cpp/.h     ← LittleFS
+│   ├── jpeg_display.cpp/.h   ← JPEG → TFT 스트리밍
+│   ├── clock_theme.cpp/.h    ← 시계 렌더링 + 🦀 애니메이션
+│   ├── dimmer.cpp/.h         ← 절전 모드 (시간대별 밝기 제어, EEPROM)
+│   ├── dimmer_page.h         ← 절전 설정 웹 UI (PROGMEM HTML)
+│   ├── crab_color.cpp/.h     ← 게 아이콘 온도 연동 색상 (EEPROM)
+│   ├── crab_color_page.h     ← 색상 설정 웹 UI (PROGMEM HTML)
+│   ├── Font_Unicode72.h      ← 72px smooth font PROGMEM 배열 (HH:MM)
+│   ├── Font_NotoSansMono20.h ← 20px smooth font PROGMEM 배열 (날짜/:SS/IP)
+│   ├── Font_NotoSansBold36.h ← 36px smooth font PROGMEM 배열 (예비)
+│   └── Font_NotoSansBold15.h ← 15px smooth font PROGMEM 배열 (예비)
 ├── diag/
-│   └── main.cpp             ← 핀 탐색 진단 유틸리티
+│   └── main.cpp              ← 핀 탐색 진단 유틸리티
 ├── diag_bezel/
-│   └── main.cpp             ← 베젤 경계 테스트 (확정 경계선 시각화)
+│   └── main.cpp              ← 베젤 경계 테스트 (확정 경계선 시각화)
 └── diag_color/
-    └── main.cpp             ← TFT 색상 평가 앱 (웹 UI + OTA)
+    └── main.cpp              ← TFT 색상 평가 앱 (웹 UI + OTA)
 
 pi/
-└── draw_client.py           ← Pi용 드로잉 커맨드 클라이언트
+├── draw_client.py            ← Pi용 드로잉 커맨드 클라이언트
+└── push_client.py            ← CPU 온도 주기 전송 (POST /temp)
 ```
 
 ### 빌드 환경
@@ -307,6 +330,36 @@ http://<IP>/compare    # 전체 비교 스트립
 
 # 메인 펌웨어로 복귀
 curl -F "image=@.pio/build/esp8266/firmware.bin" http://<IP>/update
+```
+
+---
+
+## 절전 모드 (Dimmer)
+
+시간대별로 화면 밝기를 자동 조절합니다. 설정은 EEPROM에 저장되어 재부팅 후에도 유지됩니다.
+
+- 웹 UI: `http://<IP>/dimmer`
+- 예) 22:00 ~ 07:00 → 밝기 10, 그 외 → 밝기 200
+- 자정 걸침(22:00–07:00)도 정상 지원
+- `loop()`에서 시간 변화 감지 시마다 `dimmerApply()` 호출
+
+> **주의**: GPIO5 백라이트는 **Active-Low** — `analogWrite(BL, 255 - level)` 형태로 구동.  
+> 값이 클수록 밝아집니다 (255 = 최대 밝음, 0 = 꺼짐).
+
+---
+
+## 게 아이콘 색상 (Crab Color)
+
+Raspberry Pi의 CPU 온도에 따라 🦀 아이콘 색상이 3점 보간으로 변합니다.
+
+- Pi → `POST /temp?c=XX` 로 온도 값 주기 전송 (`pi/push_client.py`)
+- 웹 UI: `http://<IP>/crab` — 색상 3점(cold/base/hot) + 온도 범위 설정
+- 기본 범위: 40°C(파랑) ↔ 50°C(진한 빨강) ↔ 60°C(앰버)
+- 데이터 미수신 시 base 색상 유지
+
+```bash
+# Pi에서 온도 전송 예시
+curl "http://192.168.219.122/temp?c=$(cat /sys/class/thermal/thermal_zone0/temp | awk '{printf "%.1f", $1/1000}')"
 ```
 
 ---

@@ -6,19 +6,19 @@
 
 ```
 Raspberry Pi                    ESP8266 (SmallTV Ultra)
-┌─────────────────────┐  HTTP  ┌───────────────────────────────────────┐
-│ pi/draw_client.py   │ ─────► │ main.cpp                              │
-│ (드로잉 커맨드 전송) │        │  ├── DisplayMode: clock / draw / jpeg │
-└─────────────────────┘        │  ├── HTTP 서버 (포트 80)              │
-                                │  └── 1초 클럭 Ticker                 │
-                                └───────────────────────────────────────┘
-                                    │         │          │         │
-                               display   draw_cmd  http_server  clock_theme
-                               (TFT래퍼)  (JSON파서)  (API서버)   (기본시계)
-                                    │                   │
-                               TFT_eSPI             filesystem
-                               ST7789V              LittleFS
-                               (240×240)         jpeg_display
+┌───────────────────────┐  HTTP  ┌────────────────────────────────────────┐
+│ pi/draw_client.py     │ ─────► │ main.cpp                               │
+│ (드로잉 커맨드 전송)   │        │  ├── DisplayMode: clock / draw / jpeg  │
+│ pi/push_client.py     │ ─────► │  ├── HTTP 서버 (포트 80)               │
+│ (CPU 온도 주기 전송)   │        │  └── 1초 클럭 Ticker                  │
+└───────────────────────┘        └────────────────────────────────────────┘
+                                      │         │          │         │
+                                 display   draw_cmd  http_server  clock_theme
+                                 (TFT래퍼)  (JSON파서)  (API서버)   (기본시계)
+                                      │                   │              │
+                                 TFT_eSPI             filesystem    dimmer
+                                 ST7789V              LittleFS    crab_color
+                                 (240×240)         jpeg_display
 ```
 
 ---
@@ -136,12 +136,20 @@ static unsigned long _modeTimeoutMs = 0;   // 0 = timeout 없음
 
 | 메서드 | 경로 | 동작 |
 |--------|------|------|
-| GET | `/` | 상태 JSON `{"fw":…,"mode":…,"brt":…,"heap":…}` |
+| GET | `/` | 홈 네비게이션 HTML 페이지 |
+| GET | `/status` | 상태 JSON `{"fw":…,"mode":…,"brt":…,"heap":…}` |
 | GET | `/mode?set=clock` | `MODE_CLOCK`으로 전환, clockThemeInit() 호출 |
 | POST | `/draw` | JSON 파싱 → drawExecute() → MODE_DRAW |
 | POST | `/display` | JPEG 수신 → LittleFS 저장 → jpegDisplayFile() → MODE_JPEG |
 | POST | `/doUpload` | `/display`와 동일 (레거시 호환) |
 | GET | `/set?brt=N` | 백라이트 밝기 조절 |
+| GET\|POST | `/temp` | 외부 온도 수신 → crabSetTemp() |
+| GET | `/dimmer` | 절전 설정 HTML 페이지 |
+| GET | `/dimmer/status` | 절전 설정 + 활성 상태 JSON |
+| POST | `/dimmer/save` | DimmerConfig 저장 + 즉시 적용 |
+| GET | `/crab` | 게 색상 설정 HTML 페이지 |
+| GET | `/crab/status` | CrabColorConfig + 현재 온도 JSON |
+| POST | `/crab/save` | CrabColorConfig 저장 + 즉시 적용 |
 | GET/POST | `/update` | OTA 펌웨어 업데이트 |
 
 #### 주요 공개 함수
@@ -208,15 +216,18 @@ y= 40: ── 구분선 ──
 y= 48: HH:MM               Font_Unicode72 (72px, ascent=52)  CYAN   [ends ~114]
 y=120: :SS                  NotoSansMono20 (20px, ascent=16)  GREY
 y=148: ── 구분선 ──
-y=156: "MONDAY"             NotoSansBold15 (15px, ascent=12)  WHITE
-y=202: 🦀 crab 애니메이션 (ICON_Y=202)
+y=156: WiFi IP 주소         NotoSansMono20 (20px, ascent=16)  WHITE
+y=202: 🦀 crab 애니메이션 (ICON_Y=202, 색상 = crabColorGet())
 ```
+
+- IP 주소는 `WiFi.localIP()` 32비트 값으로 변화 감지, 변경 시에만 재렌더링
+- 게 아이콘 색상은 `crabColorGet()`을 매 프레임 호출해 온도 변화에 실시간 반응
 
 | 폰트 헤더 | 크기 | 용도 |
 |-----------|------|------|
 | `Font_Unicode72.h` | 72px | HH:MM — digits 0-9, colon 포함 |
-| `Font_NotoSansMono20.h` | 20px | 날짜, :SS |
-| `Font_NotoSansBold15.h` | 15px | 요일 전체 이름 |
+| `Font_NotoSansMono20.h` | 20px | 날짜, :SS, IP 주소 |
+| `Font_NotoSansBold15.h` | 15px | 예비 (미사용) |
 | `Font_NotoSansBold36.h` | 36px | 예비 (미사용) |
 
 | 함수 | 역할 |
@@ -224,6 +235,7 @@ y=202: 🦀 crab 애니메이션 (ICON_Y=202)
 | `clockThemeInit()` | 캐시 초기화 → 다음 틱에 전체 재렌더링 |
 | `clockTimeValid()` | NTP 동기화 완료 여부 |
 | `clockThemeRender(theme)` | 1초 틱마다 호출되는 렌더러 |
+| `clockAnimUpdate()` | ~60fps 루프에서 게 아이콘 위치 갱신 |
 
 **구현 상태: 완료**
 
@@ -240,22 +252,26 @@ y=202: 🦀 crab 애니메이션 (ICON_Y=202)
 4. wifiSetup() — WiFiManager (저장 SSID 있으면 즉시 연결, 없으면 AP 모드)
 5. NTP 시작 및 첫 동기화 (KST UTC+9)
 6. httpServerInit()
-7. 1초 Ticker 등록 → clockThemeInit()
-8. displayFill(BLACK) → 시계 대기
+7. dimmerInit()    — EEPROM에서 절전 설정 로드 + 초기 밝기 적용
+8. crabColorInit() — EEPROM에서 색상 설정 로드
+9. 1초 Ticker 등록 → clockThemeInit()
+10. displayFill(BLACK) → 시계 대기
 ```
 
 #### loop() 처리 순서
 
 ```
-1. httpServerHandle()       — HTTP 요청 처리
-2. ESP.wdtFeed()            — 워치독 리셋
-3. syncPosixTime()          — NTP 재동기 (60초 간격)
+1. httpServerHandle()        — HTTP 요청 처리
+2. ESP.wdtFeed()             — 워치독 리셋
+3. syncPosixTime()           — NTP 재동기 (60초 간격)
 4. 모드 전환 감지
    └─ MODE_CLOCK로 복귀 시 clockThemeInit() + 화면 클리어
-5. httpCheckModeTimeout()   — draw/jpeg timeout 체크
+5. httpCheckModeTimeout()    — draw/jpeg timeout 체크
 6. _clockTick 확인 (1초마다)
+   ├─ 시간 변경 시 dimmerApply(hour) — 절전 밝기 전환
    └─ MODE_CLOCK → clockThemeRender()
       MODE_DRAW / MODE_JPEG → 아무것도 하지 않음 (화면 유지)
+7. clockAnimUpdate()         — ~60fps 게 아이콘 위치 갱신
 ```
 
 ---
@@ -264,8 +280,8 @@ y=202: 🦀 crab 애니메이션 (ICON_Y=202)
 
 | 항목 | 사용 | 한도 |
 |------|------|------|
-| Flash | **~54.5%** (570KB) | 1,044KB |
-| RAM (정적) | ~72% (59KB) | 81KB |
+| Flash | **~55.5%** (579KB) | 1,044KB |
+| RAM (정적) | ~73.7% (60KB) | 81KB |
 | 런타임 힙 | ~17KB | — |
 
 ### 메모리 절약 전략
@@ -286,9 +302,80 @@ y=202: 🦀 crab 애니메이션 (ICON_Y=202)
 | OTA 펌웨어 업데이트 (`/update`) | ✅ 확인 |
 | 드로잉 커맨드 (`POST /draw`) | ✅ 확인 |
 | timeout 자동 시계 복귀 | ✅ 확인 |
-| 장치 상태 API (`GET /`) | ✅ 확인 |
+| 장치 상태 API (`GET /status`) | ✅ 확인 |
+| 홈 네비게이션 페이지 (`GET /`) | ✅ 확인 |
 | JPEG 수신·표시 (`POST /display`) | ✅ 코드 완성 (미테스트) |
+| 절전 모드 (`/dimmer`) | ✅ 확인 |
+| 게 아이콘 온도 연동 색상 (`/crab`) | ✅ 확인 |
+| 외부 온도 수신 (`POST /temp`) | ✅ 확인 |
+| IP 주소 하단 표시 | ✅ 확인 |
 | WebSocket 스트리밍 | ⬜ Phase 3 예정 |
+
+---
+
+### 8. `dimmer.cpp / dimmer.h` — 절전 모드
+
+시간대별 밝기 자동 조절. EEPROM addr 0–6에 설정 저장.
+
+```cpp
+struct DimmerConfig {
+    bool    enabled;    // 절전 활성화 여부
+    uint8_t startHour;  // 절전 시작 시각 (0–23)
+    uint8_t endHour;    // 절전 종료 시각 (0–23)
+    uint8_t dimBrt;     // 절전 밝기 (0–255)
+    uint8_t normalBrt;  // 일반 밝기 (0–255)
+};
+```
+
+- 자정 걸침 지원: startHour > endHour면 midnight-wrap으로 처리
+- `DIM_MAGIC = 0xD8` — 이전 (PWM 반전 버그 있는) 저장값 무효화용
+- `dimmerApply()`: 상태 변화 시에만 `displaySetBrightness()` 호출 (불필요한 PWM 변경 방지)
+
+> **GPIO5 BL은 Active-Low**: `displaySetBrightness(level)` 내부에서  
+> `analogWrite(TFT_BL, 255 - level)` 로 반전 적용.  
+> 255 = 최대 밝음, 0 = 꺼짐.
+
+| 함수 | 역할 |
+|------|------|
+| `dimmerInit()` | EEPROM 로드 + 현재 시각 기준 초기 밝기 적용 |
+| `dimmerApply(hour)` | 매 시각 변경 시 호출, 필요 시 밝기 전환 |
+| `dimmerGetConfig()` / `dimmerSetConfig()` | 설정 읽기/쓰기 (쓰기는 EEPROM commit + 즉시 적용) |
+| `dimmerIsActive()` | 현재 절전 활성 여부 |
+
+**구현 상태: 완료**
+
+---
+
+### 9. `crab_color.cpp / crab_color.h` — 온도 연동 색상
+
+Pi CPU 온도에 따라 게 아이콘 색상을 3점 보간으로 산출. EEPROM addr 16–26에 저장.
+
+```cpp
+struct CrabColorConfig {
+    bool     enabled;    // 온도 연동 활성화
+    uint8_t  minTemp;    // 최저 온도 (coldColor 적용)
+    uint8_t  midTemp;    // 기준 온도 (baseColor 적용)
+    uint8_t  maxTemp;    // 최고 온도 (hotColor 적용)
+    uint16_t coldColor;  // RGB565 (기본: 0x031F, #0060FF 파랑)
+    uint16_t baseColor;  // RGB565 (기본: 0xA800, #A80000 진한 빨강)
+    uint16_t hotColor;   // RGB565 (기본: 0xFD00, #FFA000 앰버)
+};
+```
+
+- `_lastTemp = -999.0f` = 데이터 미수신 → `crabTempValid()` false → base 색상 유지
+- `lerpColor(a, b, t)`: RGB565를 R5/G6/B5로 분해해 보간 후 재패킹
+- `tempToColor(temp)`: [min,mid) 구간은 cold↔base, [mid,max] 구간은 base↔hot 보간
+- 외부 온도는 `POST /temp?c=XX` 로 수신 → `crabSetTemp(float)` 저장
+
+| 함수 | 역할 |
+|------|------|
+| `crabColorInit()` | EEPROM 로드 |
+| `crabSetTemp(t)` | 온도값 저장, 색상 즉시 재산출 |
+| `crabColorGet()` | 현재 색상(RGB565) 반환 |
+| `crabTempValid()` | 온도 데이터 수신 여부 |
+| `crabColorGetConfig()` / `crabColorSetConfig()` | 설정 읽기/쓰기 |
+
+**구현 상태: 완료**
 
 ---
 
