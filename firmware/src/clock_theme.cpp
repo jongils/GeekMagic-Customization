@@ -1,6 +1,7 @@
 #include "clock_theme.h"
 #include "display.h"
 #include "config.h"
+#include "crab_color.h"
 #include <Arduino.h>
 #include <time.h>
 #include <ESP8266WiFi.h>
@@ -204,17 +205,14 @@ static void renderTheme6(const struct tm &t) {
 #define ICON_HW    32
 #define ICON_HH    23
 
-// Dark red RGB(168,0,0) = #A80000 → tft.color565 = 0xA800
-#define COL_CLAUDE  0xA800
-
 static void iconErase(int16_t cx) {
     tft.fillRect(cx - ICON_HW - 1, ICON_Y - ICON_HH - 1,
                  (ICON_HW + 1) * 2, (ICON_HH + 1) * 2, TFT_BLACK);
 }
 
-static void iconDraw(int16_t cx) {
+static void iconDraw(int16_t cx, uint16_t color) {
     const int16_t  y = ICON_Y;
-    const uint16_t C = COL_CLAUDE;
+    const uint16_t C = color;
 
     // Body (48×32 px)
     tft.fillRect(cx - 24, y - 16, 48, 32, C);
@@ -251,10 +249,12 @@ void clockAnimUpdate() {
     int16_t maxX = SAFE_X2 - ICON_HW - 1;
     int16_t newX = minX + (int16_t)(frac * (maxX - minX));
 
+    uint16_t color = crabColorGet();
+
     if (newX == _iconX) return;
 
     if (_iconX >= 0) iconErase(_iconX);
-    iconDraw(newX);
+    iconDraw(newX, color);
     _iconX = newX;
 }
 

@@ -12,6 +12,8 @@
 #include "clock_theme.h"
 #include "dimmer.h"
 #include "dimmer_page.h"
+#include "crab_color.h"
+#include "crab_color_page.h"
 
 static ESP8266WebServer      server(80);
 static ESP8266HTTPUpdateServer updater;
@@ -171,6 +173,92 @@ static void handleSet() {
     sendJSON(200, "{\"ok\":true}");
 }
 
+// ── GET|POST /temp — receive external temperature (e.g. from Pi) ─────────────
+// GET  /temp?c=50.3
+// POST /temp  body: {"c":50.3}
+
+static void handleTemp() {
+    float t = 0.0f;
+    bool  ok = false;
+    if (server.hasArg("c")) {
+        t = server.arg("c").toFloat(); ok = true;
+    } else if (server.method() == HTTP_POST) {
+        String body = server.arg("plain");
+        JsonDocument doc;
+        if (!deserializeJson(doc, body) && doc.containsKey("c")) {
+            t = doc["c"]; ok = true;
+        }
+    }
+    if (ok) {
+        crabSetTemp(t);
+        char buf[48];
+        snprintf(buf, sizeof(buf), "{\"ok\":true,\"c\":%.1f}", t);
+        sendJSON(200, buf);
+    } else {
+        sendJSON(400, "{\"ok\":false,\"error\":\"missing c\"}");
+    }
+}
+
+// ── GET /crab — web settings page ────────────────────────────────────────────
+
+static void handleCrabPage() {
+    server.send_P(200, "text/html", CRAB_COLOR_PAGE);
+}
+
+// ── GET /crab/status — JSON ───────────────────────────────────────────────────
+
+static void handleCrabStatus() {
+    CrabColorConfig c = crabColorGetConfig();
+    char buf[220];
+    float t = crabTempC();
+    if (crabTempValid()) {
+        snprintf(buf, sizeof(buf),
+            "{\"enabled\":%s,\"minTemp\":%d,\"midTemp\":%d,\"maxTemp\":%d,"
+            "\"coldColor\":%d,\"baseColor\":%d,\"hotColor\":%d,"
+            "\"temp\":%.1f,\"tempValid\":true}",
+            c.enabled ? "true" : "false",
+            c.minTemp, c.midTemp, c.maxTemp,
+            c.coldColor, c.baseColor, c.hotColor, t);
+    } else {
+        snprintf(buf, sizeof(buf),
+            "{\"enabled\":%s,\"minTemp\":%d,\"midTemp\":%d,\"maxTemp\":%d,"
+            "\"coldColor\":%d,\"baseColor\":%d,\"hotColor\":%d,"
+            "\"temp\":null,\"tempValid\":false}",
+            c.enabled ? "true" : "false",
+            c.minTemp, c.midTemp, c.maxTemp,
+            c.coldColor, c.baseColor, c.hotColor);
+    }
+    sendJSON(200, buf);
+}
+
+// ── POST /crab/save — save settings ──────────────────────────────────────────
+
+static void handleCrabSave() {
+    if (server.method() != HTTP_POST) {
+        server.send(405, "text/plain", "POST only");
+        return;
+    }
+    String body = server.arg("plain");
+    JsonDocument doc;
+    if (deserializeJson(doc, body)) {
+        sendJSON(400, "{\"ok\":false,\"error\":\"JSON parse error\"}");
+        return;
+    }
+    CrabColorConfig cfg;
+    cfg.enabled   = doc["enabled"]   | true;
+    cfg.minTemp   = doc["minTemp"]   | 40;
+    cfg.midTemp   = doc["midTemp"]   | 50;
+    cfg.maxTemp   = doc["maxTemp"]   | 60;
+    cfg.coldColor = doc["coldColor"] | (int)0x031F;
+    cfg.baseColor = doc["baseColor"] | (int)0xA800;
+    cfg.hotColor  = doc["hotColor"]  | (int)0xFD00;
+    // Clamp: ensure minTemp < midTemp < maxTemp
+    if (cfg.midTemp <= cfg.minTemp) cfg.midTemp = cfg.minTemp + 1;
+    if (cfg.maxTemp <= cfg.midTemp) cfg.maxTemp = cfg.midTemp + 1;
+    crabColorSetConfig(cfg);
+    sendJSON(200, "{\"ok\":true}");
+}
+
 // ── GET /dimmer — web settings page ──────────────────────────────────────────
 
 static void handleDimmerPage() {
@@ -232,6 +320,11 @@ void httpServerInit() {
     // JPEG push: /display (new) and /doUpload (legacy compat)
     server.on("/display",  HTTP_POST, handleDisplay,  handleDisplayData);
     server.on("/doUpload", HTTP_POST, handleDisplay,  handleDisplayData);
+
+    server.on("/temp",          HTTP_ANY,  handleTemp);
+    server.on("/crab",          HTTP_GET,  handleCrabPage);
+    server.on("/crab/status",   HTTP_GET,  handleCrabStatus);
+    server.on("/crab/save",     HTTP_POST, handleCrabSave);
 
     server.on("/dimmer",        HTTP_GET,  handleDimmerPage);
     server.on("/dimmer/status", HTTP_GET,  handleDimmerStatus);

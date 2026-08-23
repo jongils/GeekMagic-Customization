@@ -5,7 +5,7 @@
 #include <EEPROM.h>
 #include <time.h>
 
-#define DIM_EEPROM_SIZE  16
+#define DIM_EEPROM_SIZE  32   // shared EEPROM; crab_color uses addr 16-27
 #define DIM_EEPROM_ADDR   0
 #define DIM_MAGIC        0xD8   // bumped: invalidates pre-inversion saved config
 

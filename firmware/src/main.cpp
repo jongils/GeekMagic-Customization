@@ -12,6 +12,7 @@
 #include "jpeg_display.h"
 #include "clock_theme.h"
 #include "dimmer.h"
+#include "crab_color.h"
 
 // ── NTP ───────────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,7 @@ void setup() {
 
     httpServerInit();
     dimmerInit();
+    crabColorInit();
     _clockTicker.attach(1.0f, onClockTick);
     clockThemeInit();
     displayFill(TFT_BLACK);
