@@ -7,6 +7,7 @@ import uuid
 import os
 import logging
 import time
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -113,10 +114,76 @@ class GeekMagicClient:
         logger.error(f"Push 최종 실패 ({self.retries}회 시도)")
         return False
 
+    def _post_json(self, path: str, data: dict) -> tuple[int, str]:
+        """JSON POST 요청"""
+        body = json.dumps(data).encode()
+        conn = http.client.HTTPConnection(self.device_ip, timeout=self.timeout)
+        conn.request(
+            "POST", path, body=body,
+            headers={
+                "Content-Type":   "application/json",
+                "Content-Length": str(len(body)),
+            },
+        )
+        resp   = conn.getresponse()
+        status = resp.status
+        text   = resp.read().decode(errors="ignore")
+        conn.close()
+        return status, text
+
+    def push_temp(self, temp_c: float | None = None) -> bool:
+        """Pi CPU 온도를 ESP8266으로 전송 (POST /temp)"""
+        if temp_c is None:
+            temp_c = get_cpu_temp()
+        if temp_c is None:
+            logger.warning("CPU 온도 읽기 실패")
+            return False
+        try:
+            status, body = self._post_json("/temp", {"c": round(temp_c, 1)})
+            if status == 200:
+                logger.debug(f"온도 전송: {temp_c:.1f}°C")
+                return True
+            logger.warning(f"온도 전송 실패: HTTP {status} / {body.strip()}")
+        except Exception as e:
+            logger.error(f"온도 전송 오류: {e}")
+        return False
+
     def is_online(self) -> bool:
         """장치 온라인 여부 확인"""
         try:
-            status, _ = self._get("/")
-            return status in (200, 302)
+            status, _ = self._get("/status")
+            return status == 200
         except Exception:
             return False
+
+
+def get_cpu_temp() -> float | None:
+    """Raspberry Pi CPU 온도 읽기 (°C)"""
+    try:
+        with open("/sys/class/thermal/thermal_zone0/temp") as f:
+            return int(f.read().strip()) / 1000.0
+    except Exception:
+        return None
+
+
+if __name__ == "__main__":
+    import argparse
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+
+    parser = argparse.ArgumentParser(description="Pi CPU 온도 → ESP8266 전송")
+    parser.add_argument("--ip",       default="192.168.219.122", help="장치 IP")
+    parser.add_argument("--interval", type=int, default=30,      help="전송 주기 (초, 기본 30)")
+    parser.add_argument("--once",     action="store_true",       help="한 번만 전송하고 종료")
+    args = parser.parse_args()
+
+    client = GeekMagicClient({"device_ip": args.ip})
+
+    if args.once:
+        t = get_cpu_temp()
+        print(f"CPU 온도: {t:.1f}°C" if t is not None else "온도 읽기 실패")
+        client.push_temp(t)
+    else:
+        print(f"온도 전송 시작 (IP={args.ip}, 주기={args.interval}s) — Ctrl+C로 종료")
+        while True:
+            client.push_temp()
+            time.sleep(args.interval)
