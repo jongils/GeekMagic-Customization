@@ -379,7 +379,78 @@ struct CrabColorConfig {
 
 ---
 
-## Pi 클라이언트 (`pi/draw_client.py`)
+## Pi 클라이언트 구성
+
+### 1. `weather-clock.service` — 상시 실행 서비스
+
+`/etc/systemd/system/weather-clock.service`가 Pi 부팅 시 자동으로 `main.py`를 실행합니다.
+
+#### 스레드 구성
+
+| 스레드 | 파일 | 동작 | 대상 장치 |
+|--------|------|------|-----------|
+| `scheduler` | `src/scheduler.py` | 60초마다 날씨+시계 JPEG Push | 192.168.219.110 |
+| `cpu-monitor` | `src/scheduler.py` | 30초 CPU 이미지 표시 / 30초 내장 테마 반복 | 192.168.219.110 |
+| `temp-push` | `src/scheduler.py` | 30초마다 Pi CPU 온도 `POST /temp` 전송 | 192.168.219.122 |
+
+#### `src/push_client.py` — HTTP 클라이언트
+
+| 함수/클래스 | 역할 |
+|-------------|------|
+| `GeekMagicClient(config)` | 이미지 Push 클라이언트 (device_ip 바인딩) |
+| `client.push_image(path)` | JPEG → `/doUpload` + `/set?theme=3` + `/set?img=` |
+| `client.set_theme(n)` | 내장 테마 전환 (`/set?theme=N`) |
+| `client.is_online()` | 장치 연결 확인 |
+| `push_temp_to(ip, temp_c)` | 온도값 → `POST /temp {"c": XX.X}` (모듈 함수) |
+| `get_cpu_temp()` | `/sys/class/thermal/thermal_zone0/temp` 읽기 |
+
+#### `src/scheduler.py` — `WeatherClockScheduler`
+
+| 메서드 | 역할 |
+|--------|------|
+| `start_background()` | 모든 스레드 시작 (scheduler / cpu-monitor / temp-push 등) |
+| `_cpu_monitor_loop()` | CPU 이미지 생성 → Push 사이클 (rest→show→restore) |
+| `_temp_push_loop()` | CPU 온도 읽기 → `push_temp_to(device_ip2, temp)` 주기 실행 |
+| `_update_display()` | 날씨+시계 이미지 생성 → Push (야간·슬라이드쇼 중엔 skip) |
+
+#### `config.json` 주요 설정
+
+```json
+{
+  "device_ip":  "192.168.219.110",
+  "cpu_monitor": {
+    "enabled": true, "show_sec": 30, "rest_sec": 30, "restore_theme": 1
+  },
+  "temp_push": {
+    "enabled": true,
+    "device_ip": "192.168.219.122",
+    "interval_sec": 30
+  }
+}
+```
+
+#### 서비스 관리
+
+```bash
+sudo systemctl status weather-clock.service
+sudo systemctl restart weather-clock.service
+journalctl -u weather-clock.service -f
+```
+
+---
+
+### 2. `push_client.py` (root) — 온도 단독 전송 CLI
+
+서비스와 무관하게 온도를 일회성 또는 주기적으로 전송합니다.
+
+```bash
+python3 push_client.py --once --ip 192.168.219.122
+python3 push_client.py --interval 30 --ip 192.168.219.122
+```
+
+---
+
+### 3. `pi/draw_client.py` — 드로잉 커맨드 클라이언트 (개발용)
 
 | 함수/클래스 | 역할 |
 |-------------|------|

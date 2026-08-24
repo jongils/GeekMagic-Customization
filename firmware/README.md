@@ -128,6 +128,32 @@ ESP8266은 세 가지 디스플레이 모드를 가집니다.
 
 ## Pi 클라이언트
 
+### CPU 온도 전송 (`weather-clock.service`)
+
+Pi에서 상시 실행 중인 `weather-clock.service`가 30초마다 `POST /temp`로 CPU 온도를 자동 전송합니다.
+
+- 설정: `config.json` → `temp_push.device_ip = "192.168.219.122"`
+- 서비스 재시작: `sudo systemctl restart weather-clock.service`
+
+온도 전송 후 `http://192.168.219.122/crab` 웹 UI에서 확인 가능합니다.
+
+#### 단독 테스트
+
+```bash
+# 한 번만 전송
+python3 push_client.py --once --ip 192.168.219.122
+
+# 30초마다 반복 (서비스 없이 직접 실행 시)
+python3 push_client.py --interval 30 --ip 192.168.219.122
+
+# curl로 직접 전송
+curl "http://192.168.219.122/temp?c=$(awk '{printf "%.1f",$1/1000}' /sys/class/thermal/thermal_zone0/temp)"
+```
+
+### 드로잉 커맨드 (`pi/draw_client.py`)
+
+개발·테스트용으로 JSON 드로잉 커맨드를 장치에 전송합니다.
+
 ```python
 # pi/draw_client.py
 from draw_client import SmallTV, text, hline, rect, circle
