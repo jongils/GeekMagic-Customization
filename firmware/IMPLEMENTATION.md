@@ -18,7 +18,8 @@ Raspberry Pi                    ESP8266 (SmallTV Ultra)
                                       │                   │              │
                                  TFT_eSPI             filesystem    dimmer
                                  ST7789V              LittleFS    crab_color
-                                 (240×240)         jpeg_display
+                                 (240×240)         jpeg_display   touch
+                                                              (TTP223/GPIO4)
 ```
 
 ---
@@ -254,24 +255,26 @@ y=202: 🦀 crab 애니메이션 (ICON_Y=202, 색상 = crabColorGet())
 6. httpServerInit()
 7. dimmerInit()    — EEPROM에서 절전 설정 로드 + 초기 밝기 적용
 8. crabColorInit() — EEPROM에서 색상 설정 로드
-9. 1초 Ticker 등록 → clockThemeInit()
-10. displayFill(BLACK) → 시계 대기
+9. touchInit()     — GPIO 4 INPUT 설정 (TTP223)
+10. 1초 Ticker 등록 → clockThemeInit()
+11. displayFill(BLACK) → 시계 대기
 ```
 
 #### loop() 처리 순서
 
 ```
 1. httpServerHandle()        — HTTP 요청 처리
-2. ESP.wdtFeed()             — 워치독 리셋
-3. syncPosixTime()           — NTP 재동기 (60초 간격)
-4. 모드 전환 감지
+2. touchHandle()             — TTP223 rising edge 검출 → 테마 전환
+3. ESP.wdtFeed()             — 워치독 리셋
+4. syncPosixTime()           — NTP 재동기 (60초 간격)
+5. 모드 전환 감지
    └─ MODE_CLOCK로 복귀 시 clockThemeInit() + 화면 클리어
-5. httpCheckModeTimeout()    — draw/jpeg timeout 체크
-6. _clockTick 확인 (1초마다)
+6. httpCheckModeTimeout()    — draw/jpeg timeout 체크
+7. _clockTick 확인 (1초마다)
    ├─ 시간 변경 시 dimmerApply(hour) — 절전 밝기 전환
-   └─ MODE_CLOCK → clockThemeRender()
+   └─ MODE_CLOCK → clockThemeRender(touchGetTheme())
       MODE_DRAW / MODE_JPEG → 아무것도 하지 않음 (화면 유지)
-7. clockAnimUpdate()         — ~60fps 게 아이콘 위치 갱신
+8. clockAnimUpdate()         — ~60fps 게 아이콘 위치 갱신
 ```
 
 ---
@@ -309,6 +312,7 @@ y=202: 🦀 crab 애니메이션 (ICON_Y=202, 색상 = crabColorGet())
 | 게 아이콘 온도 연동 색상 (`/crab`) | ✅ 확인 |
 | 외부 온도 수신 (`POST /temp`) | ✅ 확인 |
 | IP 주소 하단 표시 | ✅ 확인 |
+| TTP223 터치 테마 전환 (GPIO 4) | ✅ 확인 |
 | WebSocket 스트리밍 | ⬜ Phase 3 예정 |
 
 ---
@@ -374,6 +378,31 @@ struct CrabColorConfig {
 | `crabColorGet()` | 현재 색상(RGB565) 반환 |
 | `crabTempValid()` | 온도 데이터 수신 여부 |
 | `crabColorGetConfig()` / `crabColorSetConfig()` | 설정 읽기/쓰기 |
+
+**구현 상태: 완료**
+
+---
+
+### 10. `touch.cpp / touch.h` — TTP223 터치 테마 전환
+
+GPIO 4에 연결된 TTP223 정전식 터치 모듈의 rising edge를 검출해 시계 테마를 순환 전환합니다.
+
+```
+CLOCK_1 → CLOCK_2 → CLOCK_3 → CLOCK_1 → …
+```
+
+- TTP223 A모드(Momentary): 터치 중 HIGH, 뗄 때 LOW → rising edge 1회 = 테마 1단계 전진
+- 300ms 소프트웨어 디바운스 (연속 오터치 방지)
+- 테마 전환 시 `clockThemeInit()` + `displayFill(TFT_BLACK)` 으로 잔상 없이 전환
+- 재시작 시 CLOCK_1으로 초기화 (EEPROM 미사용)
+
+| 함수 | 역할 |
+|------|------|
+| `touchInit()` | `pinMode(4, INPUT)` 설정 |
+| `touchHandle()` | loop()에서 매 반복 호출 — rising edge 검출 + 디바운스 + 테마 전환 |
+| `touchGetTheme()` | 현재 테마 번호(THEME_CLOCK_1/2/3) 반환 |
+
+**EEPROM 사용**: 없음 (재부팅 후 CLOCK_1 고정)
 
 **구현 상태: 완료**
 

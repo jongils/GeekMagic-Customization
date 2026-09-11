@@ -24,6 +24,7 @@
 | **DC** | **0** | 명령/데이터 구분 |
 | **RST** | **2** | 디스플레이 리셋 |
 | **BL** | **5** | 백라이트 PWM |
+| **TTP223 SIG** | **4** | 터치 테마 전환 입력 |
 
 > GPIO0=DC, GPIO2=RST 는 직관과 반대 배치이므로 주의.
 
@@ -305,6 +306,7 @@ firmware/
 │   ├── dimmer_page.h         ← 절전 설정 웹 UI (PROGMEM HTML)
 │   ├── crab_color.cpp/.h     ← 게 아이콘 온도 연동 색상 (EEPROM)
 │   ├── crab_color_page.h     ← 색상 설정 웹 UI (PROGMEM HTML)
+│   ├── touch.cpp/.h          ← TTP223 터치 테마 전환 (GPIO 4)
 │   ├── Font_Unicode72.h      ← 72px smooth font PROGMEM 배열 (HH:MM)
 │   ├── Font_NotoSansMono20.h ← 20px smooth font PROGMEM 배열 (날짜/:SS/IP)
 │   ├── Font_NotoSansBold36.h ← 36px smooth font PROGMEM 배열 (예비)
@@ -407,13 +409,9 @@ curl "http://192.168.219.122/temp?c=$(cat /sys/class/thermal/thermal_zone0/temp 
 | 6–11 | 내부 SPI 플래시 | **사용 불가 (ESP-12F 내부 연결)** |
 | 1 | UART TX | Serial 사용 시 점유 |
 | 3 | UART RX | Serial 사용 시 점유 |
-| **4** | **미사용** | I2C SDA 등 활용 가능 후보 |
+| **4** | **TTP223 SIG** | ✅ 터치 테마 전환에 사용 중 |
 | **12** | **미사용** | HSPI MISO, 범용 IO 후보 |
 | **16** | **미사용** | Deep sleep 웨이크업 전용, 기능 제한 |
-
-**확인 필요 사항**
-- GPIO4·12·16의 PCB 실제 연결 상태 (회로도 추적 또는 멀티미터)
-- 외부 센서(온습도, 조도 등) 또는 버튼 추가 가능 여부
 
 ---
 
