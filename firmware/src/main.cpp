@@ -13,6 +13,7 @@
 #include "clock_theme.h"
 #include "dimmer.h"
 #include "crab_color.h"
+#include "touch.h"
 
 // ── NTP ───────────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ void setup() {
     httpServerInit();
     dimmerInit();
     crabColorInit();
+    touchInit();
     _clockTicker.attach(1.0f, onClockTick);
     clockThemeInit();
     displayFill(TFT_BLACK);
@@ -102,6 +104,7 @@ static DisplayMode _lastMode = MODE_CLOCK;
 
 void loop() {
     httpServerHandle();
+    touchHandle();
     ESP.wdtFeed();
     syncPosixTime();
 
@@ -135,7 +138,7 @@ void loop() {
         }
 
         if (mode == MODE_CLOCK) {
-            clockThemeRender(THEME_CLOCK_1);
+            clockThemeRender(touchGetTheme());
         }
         // MODE_DRAW / MODE_JPEG: display managed by /draw or /display
     }
