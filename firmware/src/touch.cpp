@@ -1,6 +1,7 @@
 #include "touch.h"
 #include "config.h"
 #include "clock_theme.h"
+#include "display.h"
 #include <Arduino.h>
 
 #define TOUCH_PIN    4
@@ -25,6 +26,7 @@ void touchHandle() {
         else                              _theme = THEME_CLOCK_1;
         _lastMs = now;
         clockThemeInit();
+        displayFill(TFT_BLACK);
     }
     _prevHigh = cur;
 }
