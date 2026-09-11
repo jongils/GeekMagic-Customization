@@ -194,7 +194,11 @@ pio run -e esp8266 -t upload --upload-port /dev/serial0
 ### OTA (WiFi 연결 후)
 
 ```bash
-curl -F "image=@.pio/build/esp8266/firmware.bin" http://<장치IP>/update
+# 빌드
+pio run -e esp8266_ota
+
+# 업로드
+curl -X POST -F "firmware=@.pio/build/esp8266_ota/firmware.bin" http://<장치IP>/update
 ```
 
 ---
@@ -246,7 +250,11 @@ y=239  └────────────────┘
 
 ---
 
-## 시계 화면 구성 (Theme 4 기본 — Smooth Font)
+## 시계 화면 구성
+
+터치로 3가지 테마를 순환 전환할 수 있습니다 (TTP223 GPIO 4).
+
+### Theme 4 (CLOCK_1) — 기본, Smooth Font
 
 ```
 y= 15: 날짜  "2026.08.17  MON"   NotoSansMono20 (20px), 회색, 중앙
@@ -256,6 +264,20 @@ y=120: :SS                      NotoSansMono20 (20px), 회색, 중앙
 y=148: ─────── 구분선 ───────
 y=156: WiFi IP 주소             NotoSansMono20 (20px), 흰색, 중앙
 y=202: 🦀 게 아이콘 좌우 애니메이션 (CPU 온도 연동 색상)
+```
+
+### Theme 5 (CLOCK_2) — 대형 2줄
+
+```
+상단: 날짜
+중앙: 대형 HH:MM (2줄 스타일)
+하단: :SS
+```
+
+### Theme 6 (CLOCK_3) — 3패널 분할
+
+```
+좌: HOUR  /  중: MIN  /  우: SEC  (3칸 분할)
 ```
 
 **Smooth Font 구성** — TFT_eSPI `.vlw` 폰트를 PROGMEM C 배열로 변환, LittleFS 없이 직접 임베딩
@@ -389,6 +411,28 @@ Raspberry Pi의 CPU 온도에 따라 🦀 아이콘 색상이 3점 보간으로 
 # Pi에서 온도 전송 예시
 curl "http://192.168.219.122/temp?c=$(cat /sys/class/thermal/thermal_zone0/temp | awk '{printf "%.1f", $1/1000}')"
 ```
+
+---
+
+## 터치 테마 전환 (TTP223)
+
+GPIO 4에 TTP223 정전식 터치 모듈을 연결하면 터치 한 번마다 시계 테마를 순환합니다.
+
+**배선**
+
+```
+TTP223 VCC  →  3.3V
+TTP223 GND  →  GND
+TTP223 SIG  →  GPIO 4  (ESP-12F 오른쪽 열, 위에서 4번째 패드)
+```
+
+**테마 순환**: CLOCK_1 → CLOCK_2 → CLOCK_3 → CLOCK_1 → …
+
+**오감지 대책**
+- 소프트웨어: 100ms 이상 눌러야 유효 (HOLD_MS), 500ms 재전환 방지 (DEBOUNCE_MS)
+- 하드웨어: 센서 위에 스티로폼(εᵣ≈1.03) 삽입으로 커버 관통 오감지 차단
+
+> 재시작 시 CLOCK_1으로 초기화 (EEPROM 미사용).
 
 ---
 
